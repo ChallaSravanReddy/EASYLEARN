@@ -1,0 +1,365 @@
+/* Timeline Code Player Styles */
+
+body {
+    height: 100vh;
+    width: 100vw;
+}
+.timeline-container {
+    padding: 0px;
+    max-width: 100vw;
+}
+
+.timeline-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    color: #1f2937;
+}
+
+/* Updated styles for full-screen editor */
+.editor-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    padding: 0;
+    margin: 0;
+}
+
+.mock-editor {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-size: 16px;
+    box-sizing: border-box;
+   
+}
+
+.mock-editor-textarea {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    
+}
+
+/* Start Button Overlay */
+.start-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.start-button {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    transform: scale(1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.start-button:hover {
+    background-color: #1d4ed8;
+    transform: scale(1.1);
+}
+
+.triangle-play {
+    width: 0;
+    height: 0;
+    border-left: 16px solid white;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    margin-left: 4px;
+}
+
+/* Controls Overlay */
+.controls-overlay {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    z-index: 10;
+}
+
+.controls-panel {
+    background-color: rgba(0, 0, 0, 0.8);/* change it for Time Controls background color*/
+    -webkit-backdrop-filter: blur(8px); /* Added for Safari support */
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 2px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.controls-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.control-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.control-button:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.play-button {
+    background-color: #2563eb;
+    color: white;
+}
+
+.play-button:hover {
+    background-color: #1d4ed8;
+}
+
+.stop-button {
+    background-color: #dc2626;
+    color: white;
+}
+
+.stop-button:hover {
+    background-color: #b91c1c;
+}
+
+.resume-button {
+    background-color: #16a34a;
+    color: white;
+}
+
+.resume-button:hover {
+    background-color: #15803d;
+}
+
+.time-display {
+    color: white;
+    font-family: 'Courier New', monospace;
+    background-color: rgba(0, 0, 0, 0.5); /*change it for code editor background color*/
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #374151;
+    font-size: 14px;
+}
+
+/* Timeline Slider */
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.slider-label {
+    color: white;
+    font-size: 12px;
+    width: 24px;
+}
+
+.timeline-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 8px;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+}
+
+.timeline-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Status Messages */
+.status-overlay {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    z-index: 10;
+    max-width: 320px;
+}
+
+.status-message {
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+.status-editing {
+    background-color: rgba(254, 243, 199, 0.9);
+    border: 1px solid #f59e0b;
+}
+
+.status-playing {
+    background-color: rgba(219, 234, 254, 0.9);
+    border: 1px solid #3b82f6;
+}
+
+.status-text {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.status-editing .status-text {
+    color: #92400e;
+}
+
+.status-playing .status-text {
+    color: #1e40af;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-dot-orange {
+    background-color: #f59e0b;
+}
+
+.status-dot-blue {
+    background-color: #3b82f6;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Icon styles */
+.icon {
+    width: 16px;
+    height: 16px;
+}
+
+.icon-small {
+    width: 12px;
+    height: 12px;
+}
+
+/* Output Panel Styles */
+.output-panel-container {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 50; /* Higher than other elements */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: grab;
+}
+.output-panel-container:active {
+    cursor: grabbing;
+}
+
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .timeline-container {
+        padding: 16px;
+    }
+
+    .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .controls-buttons {
+        justify-content: center;
+    }
+
+    .time-display {
+        text-align: center;
+    }
+}
+.video-panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 200px;
+    height: 200px;
+    background: rgba(0,0,0,0.8);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.language-selector {
+  background: #1e1e1e;
+  color: white;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+}

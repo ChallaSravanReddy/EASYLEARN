@@ -1,0 +1,171 @@
+/*
+ * This CSS file centralizes common styles for the Login and Registration pages.
+ * It ensures the page content is perfectly centered in the viewport.
+ */
+
+/* -------------------- Global & Body Styles -------------------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f7f7f7;
+}
+
+/* -------------------- Main Page Container -------------------- */
+.auth-page-container {
+  display: flex;
+  width: 90%;
+  max-width: 1200px;
+  height: 80vh;
+  min-height: 600px;
+  background-color: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* -------------------- Left Panel (Form) Styles -------------------- */
+.auth-form-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  text-align: center;
+  background-color: #ffffff;
+}
+
+.auth-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #000000;
+  margin-bottom: 20px;
+}
+
+.input-group {
+  width: 100%;
+  max-width: 350px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.input-group label {
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+/* -------------------- Right Panel (Illustration) Styles -------------------- */
+.auth-illustration-panel {
+  flex: 1;
+  background-color: #ffc107;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.auth-illustration-panel img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* -------------------- Common Form Element Styles -------------------- */
+.button-primary {
+  width: 100%;
+  max-width: 350px;
+  padding: 15px;
+  background-color: #ffc107;
+  color: black;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.button-primary:hover {
+  background-color: #ffbd00;
+}
+
+.social-text {
+  margin: 20px 0;
+  color: #999;
+  position: relative;
+  width: 100%;
+  max-width: 350px;
+  text-align: center;
+}
+
+.social-text::before,
+.social-text::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background-color: #ddd;
+}
+
+.social-text::before {
+  left: 0;
+}
+
+.social-text::after {
+  right: 0;
+}
+
+.social-login-icons {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.social-login-icons img {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+}
+
+.link-text {
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
+
+.link-text a {
+  color: #ffc107;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* -------------------- Responsive Styles -------------------- */
+@media (max-width: 900px) {
+  .auth-page-container {
+    flex-direction: column;
+    height: auto;
+    width: 95%;
+    min-height: auto;
+  }
+  .auth-illustration-panel {
+    display: none; /* Hide illustration on smaller screens */
+  }
+}
