@@ -1,0 +1,28 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  background-color: #f8f8f8;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+.search {
+  flex-grow: 1;
+  margin: 0 20px;
+  padding: 8px;
+}
+
+.login {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.profile {
+  font-size: 1.2rem;
+  cursor: pointer;
+}

@@ -1,0 +1,36 @@
+/* Reset some default browser styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure the app takes full height and allows scrolling */
+html, body, #root {
+  min-height: 100vh;
+  height: auto;
+  width: 100%;
+  overflow-x: hidden;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f9f9f9;
+  color: #222;
+}
+
+/* Utility class for main containers */
+.container {
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  overflow-y: auto;
+  padding-bottom: 40px; /* for footer spacing */
+}
+
+/* Optional: Style scrollbars for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  background: #eee;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}

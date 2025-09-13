@@ -1,0 +1,115 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 32px; /* Reduced height and horizontal padding */
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(32, 32, 32, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px; /* Reduced gap */
+}
+
+.logo {
+  font-family: 'Caveat', cursive;
+  font-size: 1.5rem; /* Smaller logo */
+  color: #ffd700;
+  font-weight: bold;
+  margin-right: 12px;
+}
+
+.search {
+  padding: 6px 12px; /* Slimmer input */
+  border-radius: 18px 0 0 18px;
+  border: 1px solid #eee;
+  outline: none;
+  font-size: 0.95rem;
+  background: #fafafa;
+  width: 160px; /* Reduced width */
+  transition: border 0.2s;
+}
+
+.search:focus {
+  border: 1.5px solid #ffd700;
+}
+
+.searchBtn {
+  background: #ffd700;
+  color: #181824;
+  border: none;
+  border-radius: 0 18px 18px 0;
+  padding: 6px 14px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-left: -4px;
+  transition: background 0.2s;
+}
+
+.searchBtn:hover {
+  background: #ffe066;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 18px; /* Reduced gap */
+}
+
+.link {
+  text-decoration: none;
+  color: #181824;
+  font-size: 0.98rem; /* Smaller font */
+  font-weight: 500;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-bottom 0.2s;
+}
+
+.link:hover {
+  color: #ffd700;
+  border-bottom: 2px solid #ffd700;
+}
+
+.notification {
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-right: 4px;
+  transition: color 0.2s;
+}
+
+.notification:hover {
+  color: #ffd700;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ffd700;
+  margin-right: 4px;
+}
+
+.loginBtn {
+  background: #ffd700;
+  color: #181824;
+  border: none;
+  border-radius: 5px;
+  padding: 7px 18px;
+  font-size: 0.98rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(32,32,32,0.06);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.loginBtn:hover {
+  background: #ffe066;
+  box-shadow: 0 4px 16px rgba(32,32,32,0.12);
+}

@@ -1,0 +1,66 @@
+/* .container {
+  font-family: Arial, sans-serif;
+}
+
+.bestCourse {
+  text-align: center;
+  margin: 20px;
+}
+
+.courseContent {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+} */
+
+/* .container {
+  min-height: 100vh; 
+  overflow-y: auto;  
+} */
+ .container {
+  min-height: 100vh;    /* Ensures at least full viewport height */
+  height: auto;         /* Allows content to grow */
+  overflow-y: auto;     /* Enables vertical scrolling if needed */
+}
+.whySection {
+  margin: 3rem 0 2rem 0;
+  padding: 2rem 1rem;
+  background: #fffbe6;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(32,32,32,0.06);
+}
+
+.whyTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #181824;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.whyContent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.whyItem {
+  flex: 1 1 220px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(32,32,32,0.05);
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.whyItem h3 {
+  color: #ffd700;
+  font-size: 1.15rem;
+  margin-bottom: 0.6rem;
+}
+
+.whyItem p {
+  color: #333;
+  font-size: 1rem;
+}
