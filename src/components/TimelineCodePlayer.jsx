@@ -21,7 +21,7 @@ function greet(name) {
 }
 
 // Try calling it
-console.log(greet("Alice"));
+console.log(greet("sir"));
 `,
   },
   {
@@ -132,6 +132,7 @@ function TimelineCodePlayer() {
     const intervalRef = useRef(null);
     const [language, setLanguage] = useState("javascript");
     const nodeRef = useRef(null); // For Draggable
+    const [showVideo, setShowVideo] = useState(true);
 
 
     // NEW: reference for the video element
@@ -147,10 +148,14 @@ function TimelineCodePlayer() {
         setCurrentCode(codeTimeline[0].code);
         setIsUserEditing(false);
         
-         // sync video
+        // sync video
         if (videoRef.current) {
             videoRef.current.currentTime = 0;
-            videoRef.current.play();
+            setShowVideo(true);
+            videoRef.current.play().catch(e => {
+                console.error("Error playing video:", e);
+                setShowVideo(false);
+            });
         }
 
 
@@ -167,43 +172,82 @@ function TimelineCodePlayer() {
     };
 
     // Play/Pause logic
-    const togglePlay = useCallback(() => {
-        if (!hasStarted) {
-            startTimeline();
-            return;
-        }
-
+    const togglePlayPause = () => {
         if (isPlaying) {
             clearInterval(intervalRef.current);
             setIsPlaying(false);
-             if (videoRef.current) videoRef.current.pause();
+            if (videoRef.current) {
+                videoRef.current.pause();
+                setShowVideo(false);
+            }
         } else {
             // When resuming play, exit editing mode and restore timeline code
             if (isUserEditing) {
-                setIsUserEditing(false);
-                const snapshot = [...codeTimeline]
-                    .reverse()
-                    .find((s) => s.time <= currentTime);
-                if (snapshot) {
-                    setCurrentCode(snapshot.code);
+                // Find the current position in the timeline
+                const currentTimeline = codeTimeline.find(
+                    (step) => step.time <= currentTime
+                );
+                if (currentTimeline) {
+                    setCurrentCode(currentTimeline.code);
                 }
+                setIsUserEditing(false);
             }
 
             setIsPlaying(true);
-            if (videoRef.current) videoRef.current.play();
+            if (videoRef.current) {
+                setShowVideo(true);
+                videoRef.current.play().catch(e => {
+                    console.error("Error playing video:", e);
+                    setShowVideo(false);
+                });
+            }
             intervalRef.current = setInterval(() => {
                 setCurrentTime((prev) => {
                     if (prev >= codeTimeline[codeTimeline.length - 1].time) {
                         clearInterval(intervalRef.current);
                         setIsPlaying(false);
-                        if (videoRef.current) videoRef.current.pause();
+                        if (videoRef.current) {
+                            videoRef.current.pause();
+                            setShowVideo(false);
+                        }
                         return prev;
                     }
                     return prev + 1;
                 });
             }, 1000);
         }
-    }, [hasStarted, isPlaying, isUserEditing, currentTime]);
+    };
+
+    const togglePlay = useCallback(() => {
+        if (!hasStarted) {
+            startTimeline();
+            return;
+        }
+
+        togglePlayPause();
+    }, [hasStarted, togglePlayPause]);
+
+    // Cleanup interval on unmount
+    useEffect(() => {
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, []);
+
+    // Handle keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [togglePlay]);
 
     // Stop playback
     const stopPlayback = () => {
@@ -216,6 +260,7 @@ function TimelineCodePlayer() {
          if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
+            setShowVideo(false);
         }
     };
 
@@ -233,45 +278,18 @@ function TimelineCodePlayer() {
         }
     };
 
-    // Stop playback immediately if user interacts
+    // Handle editor focus
     const handleEditorFocus = () => {
         if (isPlaying) {
             clearInterval(intervalRef.current);
             setIsPlaying(false);
-            setIsUserEditing(true);
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+            }
+            setShowVideo(false);
         }
-    };
-
-    const handleEditorChange = (value) => {
-        if (hasStarted && !isUserEditing) {
-            // User started editing, stop everything
-            clearInterval(intervalRef.current);
-            setIsPlaying(false);
-            setIsUserEditing(true);
-        }
-        setCurrentCode(value);
-    };
-
-    const handleSliderChange = (e) => {
-        const newTime = parseInt(e.target.value);
-        setCurrentTime(newTime);
-
-        // Always update code when slider changes, regardless of editing state
-        const snapshot = [...codeTimeline]
-            .reverse()
-            .find((s) => s.time <= newTime);
-        if (snapshot) {
-            setCurrentCode(snapshot.code);
-        }
-
-        // If user was editing and uses slider, exit editing mode
-        if (isUserEditing) {
-            setIsUserEditing(false);
-        }
-         // ✅ Sync video currentTime
-        if (videoRef.current) {
-        videoRef.current.currentTime = newTime;
-        }
+        setIsUserEditing(true);
     };
 
     // Auto-update code only if user is not editing
@@ -295,20 +313,43 @@ function TimelineCodePlayer() {
         };
     }, []);
 
+    // Calculate max time for the slider
     const maxTime = codeTimeline[codeTimeline.length - 1].time;
-
-
-    useEffect(() => {
-    const handleKeyDown = (e) => {
-        if (e.code === "Space") {
-        e.preventDefault();   // stop page scrolling
-        togglePlay();
+    
+    // Handle editor changes
+    const handleEditorChange = (value) => {
+        if (hasStarted && !isUserEditing) {
+            clearInterval(intervalRef.current);
+            setIsPlaying(false);
+            setIsUserEditing(true);
+        }
+        setCurrentCode(value || '');
+    };
+    
+    // Handle slider changes
+    const handleSliderChange = (e) => {
+        const newTime = parseInt(e.target.value, 10);
+        setCurrentTime(newTime);
+        
+        // Find the most recent code snapshot for this time
+        const snapshot = [...codeTimeline]
+            .reverse()
+            .find((s) => s.time <= newTime);
+            
+        if (snapshot) {
+            setCurrentCode(snapshot.code);
+        }
+        
+        // Sync video time
+        if (videoRef.current) {
+            videoRef.current.currentTime = newTime;
+        }
+        
+        // If user was editing and uses slider, exit editing mode
+        if (isUserEditing) {
+            setIsUserEditing(false);
         }
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [togglePlay]);
 
 
     // Calculate slider background for progress
@@ -316,38 +357,69 @@ function TimelineCodePlayer() {
     const sliderStyle = {
         background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${sliderProgress}%, #4b5563 ${sliderProgress}%, #4b5563 100%)`,
     };
-        <select 
-    value={language} 
-    onChange={(e) => setLanguage(e.target.value)} 
-    className="language-selector"
-    >
-    <option value="javascript">JavaScript</option>
-    <option value="python">Python</option>
-    <option value="java">Java</option>
-    <option value="cpp">C++</option>
-    <option value="html">HTML</option>
-    <option value="css">CSS</option>
-    </select>
+        
     return (
+
         <div className="timeline-container">
             <div className="editor-wrapper">
-                <Editor
-                    height="80vh"
-                    language={language}   // ✅ switch dynamically
-                    theme="vs-dark"
-                    value={currentCode}
-                    options={{ fontSize: 16 }}
-                    onChange={handleEditorChange}
-                    onFocus={handleEditorFocus}
-                />
-                  {/* NEW: Video overlay (like OutputPanel) */}
-                <div className="video-panel">
+                <div className="editor-controls">
+                    <select 
+                        value={language} 
+                        onChange={(e) => setLanguage(e.target.value)} 
+                        className="language-selector"
+                    >
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                    </select>
+                </div>
+                <div 
+                    onClick={() => {
+                        if (isPlaying) {
+                            clearInterval(intervalRef.current);
+                            setIsPlaying(false);
+                            if (videoRef.current) {
+                                videoRef.current.pause();
+                                videoRef.current.currentTime = 0;
+                                setShowVideo(false);
+                            }
+                        }
+                    }}
+                    style={{ height: '100%', width: '100%' }}
+                >
+                    <Editor
+                        height="80vh"
+                        language={language}
+                        theme="vs-dark"
+                        value={currentCode}
+                        options={{ 
+                            fontSize: 16,
+                            readOnly: false,
+                            minimap: { enabled: false }
+                        }}
+                        onChange={handleEditorChange}
+                        onFocus={handleEditorFocus}
+                    />
+                </div>
+                {/* Video Panel */}
+                <div className={`video-panel ${showVideo ? 'show' : 'hide'}`}>
+                    
                     <video
                         ref={videoRef}
-                        width="200"
-                        height="200"
-                        style={{ borderRadius: '8px' }}
-                        src="./demo.mp4"
+                        src="/demo.mp4"
+                        style={{
+                            width: '100%',
+                            height: 'calc(100% - 40px)',
+                            display: 'block',
+                            backgroundColor: '#000',
+                            objectFit: 'contain'
+                        }}
+                        controls
+                        autoPlay
+                        playsInline
                     />
                 </div>
                 {/* Start Button Overlay - Triangular Play Button in Center */}

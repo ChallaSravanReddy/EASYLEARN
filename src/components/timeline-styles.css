@@ -63,7 +63,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(182, 180, 180, 0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -79,6 +79,7 @@ body {
     transition: all 0.2s ease;
     transform: scale(1);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    z-index: 100;
 }
 
 .start-button:hover {
@@ -238,7 +239,7 @@ body {
     padding: 12px;
     border-radius: 8px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(8px);
+    
 }
 
 .status-editing {
@@ -271,6 +272,137 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
+}
+
+/* Editor Controls */
+.editor-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
+
+.language-selector {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid #4b5563;
+    background-color: #1e293b;
+    color: #f8fafc;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Video Panel */
+.video-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    height: 240px;
+    background: #1a202c;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.video-panel.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.video-panel.hide {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    pointer-events: none;
+}
+
+.video-handle {
+    padding: 8px 12px;
+    background: #2d3748;
+    color: #e2e8f0;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    user-select: none;
+}
+
+.video-handle button {
+    background: transparent;
+    border: none;
+    color: #e2e8f0;
+    font-size: 16px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.video-handle button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Video Panel */
+.video-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    width: 320px;
+    height: 240px;
+    background: #1a202c;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #374151;
+}
+
+
+
+.video-handle button {
+    background: transparent;
+    border: none;
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 16px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.video-handle button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.video-panel video {
+    flex: 1;
+    width: 100%;
+    height: calc(100% - 40px);
+    object-fit: contain;
+    background: #000;
+}
+
+/* Make sure the video panel stays on top of other elements */
+.react-draggable {
+    position: fixed !important;
+    z-index: 1000;
+    cursor: move;
 }
 
 .status-dot-orange {
@@ -343,18 +475,79 @@ body {
         text-align: center;
     }
 }
-.video-panel {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 200px;
-    height: 200px;
-    background: rgba(0,0,0,0.8);
-    border-radius: 8px;
-    padding: 4px;
-    z-index: 50;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+.video-button {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  z-index: 99;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
 }
+
+.video-button:hover {
+  background: #45a049;
+}
+
+.video-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80vw;
+  height: 80vh;
+  transform: translate(-50%, -50%) translateY(100%); /* start hidden */
+  opacity: 0;
+  background: transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.video-panel.show {
+  transform: translate(-50%, -50%) translateY(0); /* slide up */
+  opacity: 1;
+}
+
+.video-panel.hide {
+  transform: translate(-50%, -50%) translateY(100%); /* slide down */
+  opacity: 0;
+}
+
+
+.video-panel iframe,
+.video-panel video {
+  width: 100%;
+  height: 100%;
+  border: none;
+  object-fit: cover;
+}
+
+.video-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: transparent;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  z-index: 101;
+}
+
 .language-selector {
   background: #1e1e1e;
   color: white;
