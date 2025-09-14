@@ -1,4 +1,4 @@
-/* src/styles/WhyChooseUs.module.css */
+/* src/styles/WhyChooseUs.module.css
 .container {
   max-width: 1200px;
   margin: 50px auto;
@@ -40,4 +40,102 @@
 .card p {
   color: #334155;
   font-size: 0.9rem;
+} */
+/* src/styles/WhyChooseUs.module.css */
+.container {
+  max-width: 1200px;
+  margin: 50px auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.container h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #1e293b;
+}
+
+.cards {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 250px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Shine animation overlay */
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+}
+
+.card:hover::after {
+  animation: shine 1s forwards;
+}
+
+@keyframes shine {
+  from {
+    left: -75%;
+  }
+  to {
+    left: 125%;
+  }
+}
+
+.card h3 {
+  color: #000000;
+  margin-bottom: 10px;
+}
+
+.card p {
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+/* Optional: scale on hover */
+.card:hover {
+  transform: scale(1.05) translateY(-5px);
+}
+
+/* Optional: subtle bounce on hover */
+.card:hover {
+  animation: bounce 0.3s ease forwards;
+}
+
+@keyframes bounce {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.05) translateY(-5px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
 }

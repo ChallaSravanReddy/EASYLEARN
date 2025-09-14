@@ -1,13 +1,15 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "../styles/Navbar.module.css";
-import userImg from "../assets/user.png";
+import userImg from "../assets/user.jpg";
 
 export default function Navbar() {
+  const navigate = useNavigate();
+
   return (
     <nav className={styles.navbar}>
       <div className={styles.left}>
-        <h2 className={styles.logo}>NEXT STEP</h2>
+        <h2 className={styles.logo}>EASY LEARN</h2>
         <input
           type="text"
           placeholder="What do you want to learn"
@@ -20,7 +22,13 @@ export default function Navbar() {
         <a href="#" className={styles.link}>Dashboard</a>
         <a href="#" className={styles.link}>My Courses</a>
         <span className={styles.notification}>🔔</span>
-        <img src={userImg} alt="user" className={styles.avatar} />
+        <img
+          src={userImg}
+          alt="user"
+          className={styles.avatar}
+          onClick={() => navigate("/profile")}
+          style={{ cursor: "pointer" }}
+        />
         <Link to="/login">
           <button className={styles.loginBtn}>Login</button>
         </Link>

@@ -61,11 +61,12 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
  // Assuming Chatbot.jsx is in the components folder
 
 // Layout Components
-import Navbar from "./components/Navbar";
+// import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
 // Pages
 import LandingPage from "./components/LandingPage";
+import Profile from "./components/Profile";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
@@ -106,7 +107,24 @@ function Layout() {
 function App() {
   return (
     <Router>
+<<<<<<< HEAD
       <Layout />
+=======
+      <div className={styles.app}>
+        {/* <Navbar /> */}
+        <Routes>
+          <Route path="/Profile" element={<Profile />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Dynamic syllabus page */}
+          <Route path="/course/:courseName" element={<CourseSyllabus />} />
+          {/* <Route path="/practice/:moduleName" element={<PracticePage />} /> */}
+        </Routes>
+        <Footer />
+      </div>
+>>>>>>> b35c55ef197a4932a02420d12c9a76c1ad8ad67b
     </Router>
   );
 }

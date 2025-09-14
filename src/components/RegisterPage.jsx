@@ -4,6 +4,10 @@ import { auth, db } from '../firebaseConfig'; // Import `db`
 import { doc, setDoc } from 'firebase/firestore'; // New Firestore imports
 import { useNavigate } from 'react-router-dom';
 import './RegisterPage.css'; // You'll need to create this CSS file
+import googleLogo from "../assets/googlelogo.png";
+import iosLogo from "../assets/ioslogo.png";
+import fbLogo from "../assets/fblogo.png";
+import RegisterImage from "../assets/registerimage.png";
 
 const RegisterPage = () => {
   const [fullName, setFullName] = useState('');
@@ -95,12 +99,15 @@ const RegisterPage = () => {
         </form>
         <p className="social-text">or continue with</p>
         <div className="social-login-icons">
+          <img src={googleLogo} alt="Google" style={{ cursor: "pointer", width: "32px", margin: "0 8px" }} />
+          <img src={iosLogo} alt="Apple" style={{ cursor: "pointer", width: "32px", margin: "0 8px" }} />
+          <img src={fbLogo} alt="Facebook" style={{ cursor: "pointer", width: "32px", margin: "0 8px" }} />
           {/* Social login buttons go here */}
         </div>
         <p className="login-link-text">Already have an account? <a href="/login">Login</a></p>
       </div>
       <div className="register-illustration-panel">
-        {/* Illustration image goes here */}
+        <img src={RegisterImage} alt="EdA Learning" />
       </div>
     </div>
   );

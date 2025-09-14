@@ -3,7 +3,10 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, Facebo
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css'; // You'll need to create this CSS file
-
+import googleLogo from "../assets/googlelogo.png";
+import iosLogo from "../assets/ioslogo.png";
+import fbLogo from "../assets/fblogo.png";
+import loginImage from "../assets/loginimage.png";
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
@@ -55,16 +58,36 @@ const LoginPage = () => {
           <button type="submit" className="login-button">Login</button>
         </form>
         <p className="social-text">or continue with</p>
-        <div className="social-login-icons">
+        {/* <div className="social-login-icons">
           <img src="/path/to/google-icon.png" alt="Google" onClick={() => handleSocialLogin(googleProvider)} />
           <img src="/path/to/apple-icon.png" alt="Apple" onClick={() => handleSocialLogin(appleProvider)} />
           <img src="/path/to/facebook-icon.png" alt="Facebook" onClick={() => handleSocialLogin(facebookProvider)} />
-        </div>
+        </div> */}
+        <div className="social-login-icons">
+  <img
+    src={googleLogo}
+    alt="Google"
+    onClick={() => handleSocialLogin(googleProvider)}
+    style={{ cursor: "pointer", width: "32px", margin: "0 8px" }}
+  />
+  <img
+    src={iosLogo}
+    alt="Apple"
+    onClick={() => handleSocialLogin(appleProvider)}
+    style={{ cursor: "pointer", width: "32px", margin: "0 8px" }}
+  />
+  <img
+    src={fbLogo}
+    alt="Facebook"
+    onClick={() => handleSocialLogin(facebookProvider)}
+    style={{ cursor: "pointer", width: "32px", margin: "0 8px" }}
+  />
+</div>
         <p className="signup-link-text">Don't have an account? <a href="/register" className="signup-link">Sign Up</a></p>
       </div>
-      <div className="login-illustration-panel">
-        <img src="/path/to/your/illustration.jpg" alt="EdA Learning" />
-      </div>
+     <div className="login-illustration-panel">
+  <img src={loginImage} alt="EdA Learning" />
+</div>
     </div>
   );
 };

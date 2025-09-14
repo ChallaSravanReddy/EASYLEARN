@@ -5,11 +5,12 @@ import javascriptImg from "../assets/javascript.png";
 import pythonImg from "../assets/python.png";
 import javaImg from "../assets/java.png";
 import cImg from "../assets/cprogram.jpg";
-import fullStackImg from "../assets/Full_Stack.png";
+import fullStackImg from "../assets/fullstackcor.png";
+
 
 const courses = [
   { name: "JavaScript", instructor: "Mark Wilson", rating: "4.7", duration: "6h 15m", level: "Beginner", img: javascriptImg },
-  { name: "Python Programming", instructor: "Emma Clark", rating: "4.8", duration: "12h 30m", level: "Intermediate", img: pythonImg },
+  { name: "Python Programming", instructor: "Emma Clark", rating: "4.8", duration: "9h", level: "Intermediate", img: pythonImg },
   { name: "Java Programming", instructor: "Nina Patel", rating: "4.6", duration: "8h 00m", level: "Beginner", img: javaImg },
   { name: "C Programming Fundamentals", instructor: "James Anderson", rating: "4.5", duration: "7h 45m", level: "Beginner", img: cImg },
   { name: "Full Stack Web Development", instructor: "Robert Singh", rating: "4.9", duration: "20h 00m", level: "Advanced", img: fullStackImg }
@@ -29,7 +30,8 @@ export default function RecommendedCourses() {
   return (
     <div className={styles.recommended}>
       <h3>Recommended Courses</h3>
-      <p>Enhance your skills with these popular programming courses.</p>
+      <p>  </p>
+      <p> </p>
       <div className={styles.cards}>
         {courses.map((course, index) => (
           <div
@@ -44,8 +46,8 @@ export default function RecommendedCourses() {
               <h4>{course.name}</h4>
               <div className={styles.details}>
                 <span>⭐ {course.rating}</span>
-                <span>• {course.duration}</span>
-                <span>• {course.level}</span>
+                <span>{course.duration}</span>
+                <span>{course.level}</span>
               </div>
               <button
                 className={styles.learnButton}
