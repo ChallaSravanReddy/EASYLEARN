@@ -65,6 +65,7 @@ import Footer from "./components/Footer";
 
 // Pages
 import LandingPage from "./components/LandingPage";
+import Profile from "./components/Profile";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
@@ -79,6 +80,7 @@ function App() {
       <div className={styles.app}>
         {/* <Navbar /> */}
         <Routes>
+          <Route path="/Profile" element={<Profile />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

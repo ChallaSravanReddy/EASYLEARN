@@ -1,0 +1,209 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+}
+
+.profile-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Full viewport height */
+  padding: 0;
+}
+
+.profile {
+  width: 100vw;           /* Full viewport width */
+  height: 100vh;          /* Full viewport height */
+  margin: 0;
+  padding: 40px 60px;
+  background: #fff;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: Arial, sans-serif;
+  animation: fadeIn 0.8s ease forwards;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.avatar {
+  font-size: 60px;
+  transition: transform 0.3s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.1);
+}
+
+.userInfo h2 {
+  margin: 0;
+}
+
+.editBtn {
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: #7b5fff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+
+.editBtn:hover {
+  background: #5a3fcc;
+  transform: scale(1.05);
+}
+
+.overview {
+  display: flex;
+  justify-content: space-around;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.stat {
+  text-align: center;
+  margin: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.stat:hover {
+  transform: translateY(-5px);
+}
+
+.stat h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.stat p {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.courses {
+  margin-bottom: 2rem;
+}
+
+.courses h3 {
+  margin-bottom: 1rem;
+}
+
+.course {
+  margin-bottom: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.course:hover {
+  transform: translateX(5px);
+}
+
+.progressBar {
+  background: #eee;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBar div {
+  height: 100%;
+  background: #7b5fff;
+  transition: width 0.5s ease-in-out;
+}
+
+.features h3 {
+  margin-bottom: 1rem;
+}
+
+.features ul {
+  padding-left: 1.5rem;
+  color: #555;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 2rem;
+}
+
+.actions button {
+  background: #7b5fff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.actions button:hover {
+  background: #5a3fcc;
+  transform: scale(1.05);
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+}
+.assignments {
+  margin-bottom: 2rem;
+}
+
+.assignments h3 {
+  margin-bottom: 1rem;
+}
+
+.assignmentStats {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.assignmentStats div {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  min-width: 100px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease;
+}
+
+.assignmentStats div:hover {
+  transform: translateY(-5px);
+}
+
+.assignmentStats h4 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #7b5fff;
+}
+
+.assignmentStats p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+
+
+/* Remove responsive adjustments */
