@@ -1,127 +1,111 @@
 import React, { useState, useEffect, useRef,useCallback } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Pause, Square } from 'lucide-react';
+import { Play, Pause, Square, UndoDot, RotateCcw } from 'lucide-react';
 import './timeline-styles.css'; // Import the CSS file
 import OutputPanel from './OutputPanel';
 import Draggable from 'react-draggable';
 
+
 const codeTimeline = [
-  {
-    time: 0,
-    code: `// Welcome to the Timeline Code Player!
-// Click the play button in the center to start the demo
-
-`,
-  },
-  {
-    time: 2,
-    code: `// Step 1: A simple function
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-// Try calling it
-console.log(greet("sir"));
-`,
-  },
-  {
-    time: 4,
-    code: `// Step 2: Variables and template strings
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-const message = greet("World");
-const timestamp = new Date().toLocaleTimeString();
-
-console.log("Message:", message);
-console.log("Timestamp:", timestamp);
-`,
-  },
-  {
-    time: 6,
-    code: `// Step 3: Objects in JavaScript
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-const message = greet("Developer");
-const appData = {
-  user: "DevUser",
-  message: message,
-  timestamp: new Date().toISOString(),
-  version: "1.0.0"
-};
-
-console.log("App Data Object:", appData);
-`,
-  },
-  {
-    time: 8,
-    code: `// Step 4: Arrays and loops
-const fruits = ["🍎 Apple", "🍌 Banana", "🍇 Grapes", "🍍 Pineapple"];
-
-console.log("Fruits list:");
-for (let fruit of fruits) {
-  console.log("- ", fruit);
-}
-
-// Random pick
-const randomFruit = fruits[Math.floor(Math.random() * fruits.length)];
-console.log("Randomly picked fruit:", randomFruit);
-`,
-  },
-  {
-    time: 10,
-    code: `// Step 5: Putting it all together
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-const message = greet("World");
-const data = {
-  message,
-  fruits: ["🍎", "🍌", "🍇"],
-  luckyNumber: Math.floor(Math.random() * 100)
-};
-
-console.log("Final Data:", data);
-console.log("Demo completed successfully!");
-
-// Timeline demo finished!
-`,
-  },
-];
-
+        {
+            time: 94, // 1:34
+            code: `//1:34-2:00
+        console.log("Hello, World!");
+        `,
+        },
+        {
+            time: 142, // 2:22
+            code: `//2:22-2:30
+        let age = 20;
+        console.log(age);
+        `,
+        },
+        {
+            time: 155, // 2:35
+            code: `//2:35-2:54
+        var city = "Hyderabad";   // old
+        let score = 95;           // can be changed
+        const pi = 3.14;          // fixed
+        `,
+        },
+        {
+            time: 180, // 3:00
+            code: `//3:00
+        let score = 100;
+        const pi = 22;
+        `,
+        },
+        {
+            time: 195, // 3:15
+            code: `//3:15
+        let name = "Abhi";
+        console.log(name);
+        `,
+        },
+        {
+            time: 206, // 3:26
+            code: `//3:26
+        let marks = 85;
+        let price = 99.99;
+        `,
+        },
+        {
+            time: 215, // 3:35
+            code: `//3:35
+        let isStudent = true;
+        let isTeacher = false;
+        `,
+        },
+        {
+            time: 220, // 3:40
+            code: `//3:40
+        let address;
+        console.log(address); // undefined
+        `,
+        },
+        {
+            time: 225, // 3:45
+            code: `//3:45
+        let nickname = null;
+        `,
+        },
+        {
+            time: 242, // 4:02
+            code: `//4:02
+        console.log(myName);
+        console.log(myAge);
+        console.log(isCoder);
+        `,
+        },
+    ];
 // Wraps timeline code inside HTML to capture console.log
-const generateOutputHTML = (code) => `
-  <html>
-    <head>
-      <style>
-        body { font-family: monospace; padding: 10px; background: #fff; }
-        pre { color: #333; white-space: pre-wrap; }
-      </style>
-    </head>
-    <body>
-      <pre id="log"></pre>
-      <script>
-        const logEl = document.getElementById("log");
+    const generateOutputHTML = (code) => `
+    <html>
+        <head>
+        <style>
+            body { font-family: monospace; padding: 10px; background: #fff; }
+            pre { color: #333; white-space: pre-wrap; }
+        </style>
+        </head>
+        <body>
+        <pre id="log"></pre>
+        <script>
+            const logEl = document.getElementById("log");
 
-        // Override console.log
-        console.log = (...args) => {
-          logEl.innerHTML += args.join(" ") + "\\n";
-        };
+            // Override console.log
+            console.log = (...args) => {
+            logEl.innerHTML += args.join(" ") + "\\n";
+            };
 
-        try {
-          ${code}
-        } catch (e) {
-          logEl.innerHTML += "Error: " + e.message + "\\n";
-        }
-      </script>
-    </body>
-  </html>
-`;
-
+            try {
+            ${code}
+            } catch (e) {
+            logEl.innerHTML += "Error: " + e.message + "\\n";
+            }
+        </script>
+        </body>
+    </html>
+    `;
 function TimelineCodePlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [currentCode, setCurrentCode] = useState(codeTimeline[0].code);
@@ -143,38 +127,32 @@ function TimelineCodePlayer() {
     const startTimeline = () => {
         setHasStarted(true);
         setShowStartButton(false);
-        setIsPlaying(true);
+        setIsPlaying(false);
         setCurrentTime(0);
         setCurrentCode(codeTimeline[0].code);
         setIsUserEditing(false);
         
-        // sync video
+        // Initialize video but don't auto-play
         if (videoRef.current) {
             videoRef.current.currentTime = 0;
+            videoRef.current.pause();
             setShowVideo(true);
-            videoRef.current.play().catch(e => {
-                console.error("Error playing video:", e);
-                setShowVideo(false);
-            });
         }
 
-
-        intervalRef.current = setInterval(() => {
-            setCurrentTime((prev) => {
-                if (prev >= codeTimeline[codeTimeline.length - 1].time) {
-                    clearInterval(intervalRef.current);
-                    setIsPlaying(false);
-                    return prev;
-                }
-                return prev + 1;
-            });
-        }, 1000);
+        // Clear any existing interval
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
     };
 
     // Play/Pause logic
-    const togglePlayPause = () => {
+    const togglePlayPause = useCallback(() => {
         if (isPlaying) {
-            clearInterval(intervalRef.current);
+            // Pause both video and timeline
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
             setIsPlaying(false);
             if (videoRef.current) {
                 videoRef.current.pause();
@@ -183,7 +161,6 @@ function TimelineCodePlayer() {
         } else {
             // When resuming play, exit editing mode and restore timeline code
             if (isUserEditing) {
-                // Find the current position in the timeline
                 const currentTimeline = codeTimeline.find(
                     (step) => step.time <= currentTime
                 );
@@ -194,16 +171,27 @@ function TimelineCodePlayer() {
             }
 
             setIsPlaying(true);
+            
+            // Sync video with current time
             if (videoRef.current) {
+                videoRef.current.currentTime = currentTime;
                 setShowVideo(true);
                 videoRef.current.play().catch(e => {
                     console.error("Error playing video:", e);
                     setShowVideo(false);
                 });
             }
+
+            // Start timeline updates
             intervalRef.current = setInterval(() => {
                 setCurrentTime((prev) => {
-                    if (prev >= codeTimeline[codeTimeline.length - 1].time) {
+                    const newTime = prev + 1;
+                    // Sync video time with timeline
+                    if (videoRef.current) {
+                        videoRef.current.currentTime = newTime;
+                    }
+                    
+                    if (newTime >= codeTimeline[codeTimeline.length - 1].time) {
                         clearInterval(intervalRef.current);
                         setIsPlaying(false);
                         if (videoRef.current) {
@@ -212,11 +200,11 @@ function TimelineCodePlayer() {
                         }
                         return prev;
                     }
-                    return prev + 1;
+                    return newTime;
                 });
             }, 1000);
         }
-    };
+    }, [isPlaying, isUserEditing, currentTime]);
 
     const togglePlay = useCallback(() => {
         if (!hasStarted) {
@@ -227,8 +215,13 @@ function TimelineCodePlayer() {
         togglePlayPause();
     }, [hasStarted, togglePlayPause]);
 
-    // Cleanup interval on unmount
+    // Initialize video on mount and cleanup on unmount
     useEffect(() => {
+        // Pause video on initial load
+        if (videoRef.current) {
+            videoRef.current.pause();
+        }
+        
         return () => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
@@ -250,19 +243,19 @@ function TimelineCodePlayer() {
     }, [togglePlay]);
 
     // Stop playback
-    const stopPlayback = () => {
+    const stopPlayback = useCallback(() => {
         clearInterval(intervalRef.current);
         setIsPlaying(false);
         setCurrentTime(0);
         setCurrentCode(codeTimeline[0].code);
         setIsUserEditing(false);
 
-         if (videoRef.current) {
+        if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
             setShowVideo(false);
         }
-    };
+    }, []);
 
     // Resume timeline from current position
     const resumeTimeline = () => {
@@ -279,27 +272,32 @@ function TimelineCodePlayer() {
     };
 
     // Handle editor focus
-    const handleEditorFocus = () => {
+    const handleEditorFocus = useCallback(() => {
         if (isPlaying) {
             clearInterval(intervalRef.current);
             setIsPlaying(false);
             if (videoRef.current) {
                 videoRef.current.pause();
-                videoRef.current.currentTime = 0;
+                setShowVideo(false);
             }
-            setShowVideo(false);
         }
         setIsUserEditing(true);
-    };
+    }, [isPlaying]);
 
-    // Auto-update code only if user is not editing
+    // Auto-update code and sync video time when currentTime changes
     useEffect(() => {
         if (!isUserEditing && hasStarted) {
             const snapshot = [...codeTimeline]
                 .reverse()
                 .find((s) => s.time <= currentTime);
+                
             if (snapshot) {
                 setCurrentCode(snapshot.code);
+            }
+            
+            // Sync video time if it's playing
+            if (isPlaying && videoRef.current) {
+                videoRef.current.currentTime = currentTime;
             }
         }
     }, [currentTime, isUserEditing, hasStarted]);
@@ -362,7 +360,7 @@ function TimelineCodePlayer() {
 
         <div className="timeline-container">
             <div className="editor-wrapper">
-                <div className="editor-controls">
+                {/* <div className="editor-controls">
                     <select 
                         value={language} 
                         onChange={(e) => setLanguage(e.target.value)} 
@@ -375,7 +373,7 @@ function TimelineCodePlayer() {
                         <option value="html">HTML</option>
                         <option value="css">CSS</option>
                     </select>
-                </div>
+                </div> */}
                 <div 
                     onClick={() => {
                         if (isPlaying) {
@@ -409,12 +407,12 @@ function TimelineCodePlayer() {
                     
                     <video
                         ref={videoRef}
-                        src="/demo.mp4"
+                        src="/javascript-intro.mp4" // Ensure this path is correct
                         style={{
                             width: '100%',
                             height: 'calc(100% - 40px)',
                             display: 'block',
-                            backgroundColor: '#000',
+                            backgroundColor: 'transparent',
                             objectFit: 'contain'
                         }}
                         controls
@@ -456,8 +454,8 @@ function TimelineCodePlayer() {
                                         onClick={stopPlayback}
                                         className="control-button stop-button"
                                     >
-                                        <Square className="icon" />
-                                        Stop
+                                        <RotateCcw className="icon" />
+                                        RESET
                                     </button>
 
                                     {isUserEditing && (
@@ -465,8 +463,8 @@ function TimelineCodePlayer() {
                                             onClick={resumeTimeline}
                                             className="control-button resume-button"
                                         >
-                                            <Play className="icon" />
-                                            Resume
+                                            <UndoDot className="icon" />
+                                            RESET CODE
                                         </button>
                                     )}
                                 </div>

@@ -127,14 +127,29 @@ export default function CourseSyllabus() {
 
       <h1 className={styles.title}>{decodedName} Syllabus</h1>
 
-      <ul className={styles.syllabusList}>
-        {syllabus.map((topic, index) => (
-          <li key={index} className={styles.syllabusItem}>
-            <span className={styles.step}>{index + 1}</span>
-            {topic}
-          </li>
-        ))}
-      </ul>
+              <ul className={styles.syllabusList}>
+          {syllabus.map((topic, index) => {
+            const isIntroJS =
+              decodedName === "JavaScript" && topic === "Introduction to JavaScript";
+
+            return (
+              <li
+                key={index}
+                className={styles.syllabusItem}
+                onClick={() => {
+                  if (isIntroJS) {
+                    navigate("/course/javascript/introduction");
+                  }
+                }}
+                style={{ cursor: isIntroJS ? "pointer" : "default", color: isIntroJS ? "blue" : "inherit" }}
+              >
+                <span className={styles.step}>{index + 1}</span>
+                {topic}
+              </li>
+            );
+          })}
+        </ul>
+
     </div>
   );
 }

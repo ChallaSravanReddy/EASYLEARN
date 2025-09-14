@@ -294,15 +294,15 @@ body {
 
 /* Video Panel */
 .video-panel {
+    display: inline-block;
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 320px;
+    width: 200px;
     height: 240px;
     background: #1a202c;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
     z-index: 1000;
     transition: all 0.3s ease;
 }
@@ -316,7 +316,7 @@ body {
 .video-panel.hide {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(20px);
+    transform: translateY(200px);
     pointer-events: none;
 }
 
@@ -330,7 +330,6 @@ body {
     justify-content: space-between;
     align-items: center;
     cursor: move;
-    user-select: none;
 }
 
 .video-handle button {
@@ -438,7 +437,7 @@ body {
 /* Output Panel Styles */
 .output-panel-container {
     position: fixed;
-    bottom: 16px;
+    top: 16px;
     right: 16px;
     z-index: 50; /* Higher than other elements */
     display: flex;
@@ -448,10 +447,10 @@ body {
     border-radius: 8px;
     padding: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    cursor: grab;
+    cursor: move;
 }
 .output-panel-container:active {
-    cursor: grabbing;
+    cursor: move;
 }
 
 
@@ -499,15 +498,14 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 80vw;
-  height: 80vh;
+  width: 60vw;
+  height: 70vh;
   transform: translate(-50%, -50%) translateY(100%); /* start hidden */
   opacity: 0;
   background: transparent;
   border-radius: 12px;
   overflow: hidden;
   z-index: 100;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -521,7 +519,7 @@ body {
 
 .video-panel.hide {
   transform: translate(-50%, -50%) translateY(100%); /* slide down */
-  opacity: 0;
+  opacity: 1;
 }
 
 

@@ -5,8 +5,8 @@ import './timeline-styles.css'; // import the CSS that contains .output-panel-co
 const OutputPanel = ({ outputCode }) => {
   const styles = {
     panel: {
-      width: '200px',
-      height: '200px',
+      width: '250px',
+      height: '250px',
       border: '2px solid #007acc',
       borderRadius: '8px',
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',

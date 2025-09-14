@@ -186,7 +186,6 @@ body {
     flex-direction: column;
     height: auto;
     width: 95%;
-    min-height: auto;
   }
   .login-illustration-panel {
     display: none; /* Hide illustration on smaller screens */
