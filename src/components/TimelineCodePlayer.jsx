@@ -8,70 +8,76 @@ import Draggable from 'react-draggable';
 
 const codeTimeline = [
         {
-            time: 94, // 1:34
-            code: `//1:34-2:00
+            time: 0,
+            code: `
+        //Welcome to JavaScript Basics!
+        `,
+        },
+        {
+            time: 94,
+            code: `
         console.log("Hello, World!");
         `,
         },
         {
-            time: 142, // 2:22
-            code: `//2:22-2:30
+            time: 142, 
+            code: `
         let age = 20;
         console.log(age);
         `,
         },
         {
-            time: 155, // 2:35
-            code: `//2:35-2:54
+            time: 155, 
+            code: `
         var city = "Hyderabad";   // old
         let score = 95;           // can be changed
         const pi = 3.14;          // fixed
         `,
         },
         {
-            time: 180, // 3:00
-            code: `//3:00
+            time: 180,
+            code: `
         let score = 100;
         const pi = 22;
         `,
         },
         {
-            time: 195, // 3:15
-            code: `//3:15
+            time: 195, 
+            code: `
         let name = "Abhi";
         console.log(name);
         `,
         },
         {
-            time: 206, // 3:26
-            code: `//3:26
+            time: 206, 
+            code: `
         let marks = 85;
         let price = 99.99;
         `,
         },
         {
-            time: 215, // 3:35
-            code: `//3:35
+            time: 215, 
+            code: `
         let isStudent = true;
         let isTeacher = false;
         `,
         },
         {
-            time: 220, // 3:40
-            code: `//3:40
+            time: 220, 
+            code: `
         let address;
         console.log(address); // undefined
         `,
         },
         {
             time: 225, // 3:45
-            code: `//3:45
+            code: `
         let nickname = null;
         `,
         },
         {
             time: 242, // 4:02
-            code: `//4:02
+            code: `
         console.log(myName);
         console.log(myAge);
         console.log(isCoder);

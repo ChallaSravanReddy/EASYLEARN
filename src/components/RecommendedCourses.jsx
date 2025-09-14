@@ -24,7 +24,7 @@ export default function RecommendedCourses() {
   };
 
   const handleCardClick = (courseName) => {
-    navigate(`/course/${encodeURIComponent(courseName)}/syllabus`);
+    navigate(`/course/${encodeURIComponent(courseName)}`);
   };
 
   return (

@@ -169,7 +169,7 @@ export default function LandingPage() {
 
   return (
     <div className={styles.container}>
-      <Navbar />
+      {/* <Navbar /> */}
       <Header search={search} setSearch={setSearch} handleLogin={handleLogin} />
       <HeroSection />
       <RecommendedCourses />

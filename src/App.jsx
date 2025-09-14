@@ -58,10 +58,9 @@
 // // export default App;
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
- // Assuming Chatbot.jsx is in the components folder
 
 // Layout Components
-// import Navbar from "./components/Navbar";
+import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
 // Pages
@@ -70,7 +69,7 @@ import Profile from "./components/Profile";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
-import CourseSyllabus from "./components/CourseSyllabus"; 
+import CourseSyllabus from "./components/CourseSyllabus";
 import TimelineCodePlayer from "./components/TimelineCodePlayer";
 import WebChat from "./components/WebChat";
 
@@ -80,10 +79,10 @@ import "./App.css";
 function Layout() {
   const location = useLocation();
 
-  // Hide Navbar & Footer on login and register pages
+  // Hide Navbar & Footer on login and register pages, and the timeline player page
   const hideLayout = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/course/javascript/introduction";
   
-  // Show WebChat only on specific pages
+  // Show WebChat only on the TimelineCodePlayer page
   const showWebChat = location.pathname === "/course/javascript/introduction";
 
   return (
@@ -93,10 +92,10 @@ function Layout() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/Profile" element={<Profile />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/course/:courseName" element={<CourseSyllabus />} />
         <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
-
       </Routes>
       {!hideLayout && <Footer />}
       {showWebChat && <WebChat />}
@@ -107,27 +106,11 @@ function Layout() {
 function App() {
   return (
     <Router>
-<<<<<<< HEAD
       <Layout />
-=======
-      <div className={styles.app}>
-        {/* <Navbar /> */}
-        <Routes>
-          <Route path="/Profile" element={<Profile />} />
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* Dynamic syllabus page */}
-          <Route path="/course/:courseName" element={<CourseSyllabus />} />
-          {/* <Route path="/practice/:moduleName" element={<PracticePage />} /> */}
-        </Routes>
-        <Footer />
-      </div>
->>>>>>> b35c55ef197a4932a02420d12c9a76c1ad8ad67b
     </Router>
   );
 }
 
 export default App;
+
 
