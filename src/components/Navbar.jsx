@@ -7,7 +7,7 @@ export default function Navbar() {
   return (
     <nav className={styles.navbar}>
       <div className={styles.left}>
-        <h2 className={styles.logo}>NEXT STEP</h2>
+        <h2 className={styles.logo}>EASY LEARN</h2>
         <input
           type="text"
           placeholder="What do you want to learn"

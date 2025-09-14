@@ -1,41 +1,4 @@
-/* .hero {
-  display: flex;
-  justify-content: space-between;
-  padding: 2rem;
-  align-items: center;
-}
-
-.left {
-  max-width: 50%;
-}
-
-.left h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-}
-
-.left p {
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.resumeBtn {
-  background-color: #ffdd00;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.right {
-  max-width: 40%;
-}
-
-.imageContainer img {
-  width: 100%;
-  border-radius: 10px;
-} */
- .heroBanner {
+/* .heroBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -44,6 +7,167 @@
   border-radius: 18px;
   box-shadow: 0 4px 24px rgba(32,32,32,0.08);
   margin-bottom: 2rem;
+  animation: fadeInSlide 1s ease forwards;
+}
+
+@keyframes fadeInSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bannerLeft {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 2.5rem;
+  animation: fadeIn 1.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.bannerTitle {
+  font-size: 2.8rem;
+  font-weight: bold;
+  color: #181824;
+  margin-bottom: 1.2rem;
+  animation: titleFade 1.5s ease forwards;
+}
+
+@keyframes titleFade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bannerDesc {
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 2rem;
+  animation: descFade 1.7s ease forwards;
+}
+
+@keyframes descFade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enrollBtn {
+  background: #181824;
+  color: #ffd700;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem 2.5rem;
+  font-size: 1.15rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(32,32,32,0.08);
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+  animation: btnFade 2s ease forwards;
+}
+
+@keyframes btnFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.enrollBtn:hover {
+  background: #333;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(32,32,32,0.2);
+}
+
+.bannerRight {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bannerImage {
+  max-width: 340px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(32,32,32,0.10);
+  animation: floatImage 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatImage {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-10px);
+  }
+} */
+.heroBanner {
+  position: relative; /* needed for the shine overlay */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, #ffd700 0%, #e9c515 100%);
+  padding: 3rem 4rem;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(32,32,32,0.08);
+  margin-bottom: 2rem;
+  overflow: hidden; /* hide overflow for animation */
+}
+
+.heroBanner::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  transform: skewX(-20deg);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% {
+    left: -50%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 .bannerLeft {
@@ -77,11 +201,12 @@
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(32,32,32,0.08);
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.3s;
 }
 
 .enrollBtn:hover {
   background: #333;
+  transform: scale(1.05);
 }
 
 .bannerRight {
@@ -95,4 +220,9 @@
   max-width: 340px;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(32,32,32,0.10);
+  transition: transform 3s ease;
+}
+
+.bannerImage:hover {
+  transform: scale(3.05);
 }
