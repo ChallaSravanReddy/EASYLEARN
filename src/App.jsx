@@ -60,7 +60,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // Layout Components
-import Navbar from "./components/Navbar";
+// import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
 // Pages
@@ -77,7 +77,7 @@ function App() {
   return (
     <Router>
       <div className={styles.app}>
-        <Navbar />
+        {/* <Navbar /> */}
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />

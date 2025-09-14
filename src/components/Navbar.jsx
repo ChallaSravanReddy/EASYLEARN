@@ -20,7 +20,7 @@ export default function Navbar() {
         <a href="#" className={styles.link}>Dashboard</a>
         <a href="#" className={styles.link}>My Courses</a>
         <span className={styles.notification}>🔔</span>
-        <img src={userImg} alt="user" className={styles.avatar} />
+        <span className={styles.avatar} role="img" aria-label="user">👤</span>
         <Link to="/login">
           <button className={styles.loginBtn}>Login</button>
         </Link>
