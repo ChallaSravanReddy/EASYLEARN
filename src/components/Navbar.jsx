@@ -6,6 +6,7 @@ import userImg from "../assets/user.jpg";
 export default function Navbar() {
   const navigate = useNavigate();
 
+
   return (
     <nav className={styles.navbar}>
       <div className={styles.left}>

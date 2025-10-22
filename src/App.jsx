@@ -80,10 +80,11 @@ function Layout() {
   const location = useLocation();
 
   // Hide Navbar & Footer on login and register pages, and the timeline player page
-  const hideLayout = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/course/javascript/introduction";
+  const hideLayout = location.pathname === "/login" ||location.pathname === "/dashboard" || location.pathname === "/register" || location.pathname === "/course/javascript/introduction";
   
   // Show WebChat only on the TimelineCodePlayer page
   const showWebChat = location.pathname === "/course/javascript/introduction";
+  //above line to remove for chatbot removal
 
   return (
     <div className={styles.app}>
@@ -99,6 +100,7 @@ function Layout() {
       </Routes>
       {!hideLayout && <Footer />}
       {showWebChat && <WebChat />}
+      {/*above line to remove for chatbot removal*/}
     </div>
   );
 }

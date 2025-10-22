@@ -56,14 +56,17 @@ import RecommendedCourses from './RecommendedCourses';
 import WhyChooseUs from './WhyChooseUs';
 import Footer from './Footer';
 import styles from '../styles/LandingPage.module.css';
+import Header from './Header';
 
 export default function Dashboard() {
   return (
     <div className={styles.container}>
+      <Header />
       <HeroSection />
       <RecommendedCourses />
       <WhyChooseUs />
       <Footer />
+      
     </div>
   );
 }
