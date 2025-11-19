@@ -1,27 +1,15 @@
-/* .container {
-  font-family: Arial, sans-serif;
-}
-
-.bestCourse {
-  text-align: center;
-  margin: 20px;
-}
-
-.courseContent {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
-} */
-
-/* .container {
-  min-height: 100vh; 
-  overflow-y: auto;  
-} */
- .container {
+/* Dark mode support */
+.container {
   min-height: 100vh;    /* Ensures at least full viewport height */
   height: auto;         /* Allows content to grow */
   overflow-y: auto;     /* Enables vertical scrolling if needed */
 }
+
+/* Dark mode container background */
+.dark .container {
+  background-color: #0f172a;
+}
+
 .whySection {
   margin: 3rem 0 2rem 0;
   padding: 2rem 1rem;
@@ -30,12 +18,23 @@
   box-shadow: 0 2px 12px rgba(32,32,32,0.06);
 }
 
+/* Dark mode section background */
+.dark .whySection {
+  background: #1e293b;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
 .whyTitle {
   font-size: 2rem;
   font-weight: bold;
   color: #181824;
   margin-bottom: 1.5rem;
   text-align: center;
+}
+
+/* Dark mode title color */
+.dark .whyTitle {
+  color: #f8fafc;
 }
 
 .whyContent {
@@ -54,13 +53,29 @@
   text-align: center;
 }
 
+/* Dark mode item background */
+.dark .whyItem {
+  background: #334155;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+}
+
 .whyItem h3 {
   color: #ffd700;
   font-size: 1.15rem;
   margin-bottom: 0.6rem;
 }
 
+/* Dark mode h3 color - keep golden for consistency */
+.dark .whyItem h3 {
+  color: #fbbf24;
+}
+
 .whyItem p {
   color: #333;
   font-size: 1rem;
+}
+
+/* Dark mode paragraph color */
+.dark .whyItem p {
+  color: #cbd5e1;
 }

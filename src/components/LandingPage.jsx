@@ -152,12 +152,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "./Navbar";
 import WhyChooseUs from "./WhyChooseUs";
-import Header from './Header';
 import HeroSection from './HeroSection';
 import RecommendedCourses from './RecommendedCourses';
 // import WhyChooseUs from './WhyChooseUs';
 import Footer from './Footer';
 import styles from '../styles/LandingPage.module.css';
+
 
 export default function LandingPage() {
   const [search, setSearch] = useState("");
@@ -170,7 +170,7 @@ export default function LandingPage() {
   return (
     <div className={styles.container}>
       {/* <Navbar /> */}
-      <Header search={search} setSearch={setSearch} handleLogin={handleLogin} />
+      <Navbar search={search} setSearch={setSearch} handleLogin={handleLogin} />
       <HeroSection />
       <RecommendedCourses />
       <WhyChooseUs />

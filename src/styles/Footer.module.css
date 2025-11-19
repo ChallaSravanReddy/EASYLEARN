@@ -1,3 +1,4 @@
+/* Dark mode support */
 .footer {
   display: flex;
   justify-content: space-between;
@@ -6,6 +7,11 @@
   padding: 40px 60px;
   border-radius: 8px;
   margin-top: 40px;
+}
+
+/* Dark mode footer - slightly different gradient for consistency */
+.dark .footer {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
 
 .left {
@@ -19,6 +25,12 @@
   font-family: 'Caveat', cursive;
   font-size: 2.5rem;
   margin-bottom: 10px;
+  color: #ffd700;
+}
+
+/* Dark mode logo color */
+.dark .logo {
+  color: #fbbf24;
 }
 
 .cta {
@@ -39,6 +51,14 @@
   outline: none;
   width: 220px;
   font-size: 1rem;
+  background-color: #f8f8f8;
+  color: #181824;
+}
+
+/* Dark mode input */
+.dark .input {
+  background-color: #334155;
+  color: #f8fafc;
 }
 
 .button {
@@ -53,8 +73,19 @@
   transition: background 0.2s;
 }
 
+/* Dark mode button */
+.dark .button {
+  background: #fbbf24;
+  color: #0f172a;
+}
+
 .button:hover {
   background: #ffd700;
+}
+
+/* Dark mode button hover */
+.dark .button:hover {
+  background: #f59e0b;
 }
 
 .copyright {
@@ -77,6 +108,12 @@
 .links h4, .support h4 {
   font-size: 1.1rem;
   margin-bottom: 12px;
+  color: #ffd700;
+}
+
+/* Dark mode heading colors */
+.dark .links h4, .dark .support h4 {
+  color: #fbbf24;
 }
 
 .links ul, .support ul {

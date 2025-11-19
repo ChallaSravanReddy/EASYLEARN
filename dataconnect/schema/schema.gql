@@ -1,0 +1,47 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  photoUrl: String
+  role: String
+}
+
+type Course @table {
+  title: String!
+  description: String!
+  createdAt: Timestamp!
+  instructor: User
+  difficultyLevel: String
+  imageUrl: String
+  language: String
+}
+
+type Lesson @table {
+  title: String!
+  videoUrl: String!
+  order: Int!
+  createdAt: Timestamp!
+  course: Course
+  description: String
+  durationInMinutes: Int
+  interactiveElements: String
+}
+
+type Enrollment @table(key: ["student", "course"]) {
+  enrolledAt: Timestamp!
+  student: User!
+  course: Course!
+  progress: Int
+  lastAccessedLesson: Lesson
+}
+
+type Interaction @table {
+  interactionType: String!
+  interactionTimestamp: Timestamp!
+  student: User
+  lesson: Lesson
+  inputCode: String
+  outputResult: String
+  aiQuestion: String
+  aiResponse: String
+}

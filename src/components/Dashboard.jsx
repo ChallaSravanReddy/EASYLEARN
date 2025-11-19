@@ -63,7 +63,7 @@ export default function Dashboard() {
       <HeroSection />
       <RecommendedCourses />
       <WhyChooseUs />
-      <Footer />
+      
     </div>
   );
 }

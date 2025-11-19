@@ -1,3 +1,4 @@
+/* Dark mode support */
 .header {
   display: flex;
   align-items: center;
@@ -6,9 +7,19 @@
   background-color: #f8f8f8;
 }
 
+/* Dark mode header background */
+.dark .header {
+  background-color: #1e293b;
+}
+
 .logo {
   font-weight: bold;
   font-size: 1.5rem;
+}
+
+/* Dark mode logo color */
+.dark .logo {
+  color: #f8fafc;
 }
 
 .search {
@@ -17,12 +28,31 @@
   padding: 8px;
 }
 
+/* Dark mode search input */
+.dark .search {
+  background-color: #334155;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
 .login {
   padding: 8px 16px;
   cursor: pointer;
 }
 
+/* Dark mode login button */
+.dark .login {
+  background-color: #334155;
+  color: #f8fafc;
+  border-color: #475569;
+}
+
 .profile {
   font-size: 1.2rem;
   cursor: pointer;
+}
+
+/* Dark mode profile icon */
+.dark .profile {
+  color: #f8fafc;
 }

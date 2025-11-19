@@ -1,3 +1,4 @@
+/* Dark mode support */
 .container {
   max-width: 800px;
   margin: 40px auto;
@@ -8,12 +9,23 @@
   animation: fadeIn 0.4s ease-in-out;
 }
 
+/* Dark mode container */
+.dark .container {
+  background: #1e293b;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
 .title {
   text-align: center;
   font-size: 2rem;
   font-weight: 700;
   color: #222;
   margin-bottom: 20px;
+}
+
+/* Dark mode title */
+.dark .title {
+  color: #f8fafc;
 }
 
 .backButton {
@@ -28,9 +40,19 @@
   transition: color 0.2s ease;
 }
 
+/* Dark mode back button */
+.dark .backButton {
+  color: #60a5fa;
+}
+
 .backButton:hover {
   color: #1e1bbd;
   text-decoration: underline;
+}
+
+/* Dark mode back button hover */
+.dark .backButton:hover {
+  color: #3b82f6;
 }
 
 .syllabusList {
@@ -50,59 +72,55 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.03);
 }
 
+/* Dark mode syllabus item */
+.dark .syllabusList li {
+  background: #334155;
+  border-left-color: #8b5cf6;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
 .syllabusList li:hover {
-  transform: translateX(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Dark mode syllabus item hover */
+.dark .syllabusList li:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
+  background: #6c63ff;
+  color: white;
   width: 28px;
   height: 28px;
-  background: #4f46e5;
-  color: white;
-  font-weight: bold;
   border-radius: 50%;
+  text-align: center;
+  line-height: 28px;
+  font-size: 0.9rem;
+  font-weight: bold;
   margin-right: 12px;
-  flex-shrink: 0;
+}
+
+/* Dark mode step indicator */
+.dark .step {
+  background: #8b5cf6;
 }
 
 .notFound {
   text-align: center;
-  margin-top: 50px;
-  color: #ff4d4f;
   font-size: 1.5rem;
+  color: #ef4444;
+  margin: 40px;
 }
 
-.banner {
-  background: linear-gradient(270deg, #6c63ff, #00bcd4, #ff6ec7);
-  background-size: 600% 600%;
-  animation: gradientShift 10s ease infinite;
-  text-align: center;
-  padding: 28px 16px;
-  border-radius: 14px;
-  margin-bottom: 28px;
-  color: #fff;
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+/* Dark mode not found message */
+.dark .notFound {
+  color: #f87171;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-30px);}
-  to { opacity: 1; transform: translateY(0);}
-}
-
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
