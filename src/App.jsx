@@ -73,6 +73,9 @@ import Dashboard from "./components/Dashboard";
 import CourseSyllabus from "./components/CourseSyllabus"; 
 import TimelineCodePlayer from "./components/TimelineCodePlayer";
 import WebChat from "./components/WebChat";
+import Navbar from "./components/Navbar";
+
+// Styles
 
 import styles from "./styles/App.module.css";
 import "./App.css";
@@ -107,9 +110,9 @@ function Layout() {
 function App() {
   return (
     <Router>
-<<<<<<< HEAD
+
       <Layout />
-=======
+
       <div className={styles.app}>
         {/* <Navbar /> */}
         <Routes>
@@ -124,7 +127,6 @@ function App() {
         </Routes>
         <Footer />
       </div>
->>>>>>> b35c55ef197a4932a02420d12c9a76c1ad8ad67b
     </Router>
   );
 }
