@@ -36,12 +36,15 @@ function Layout() {
   return (
     <>
       {/* Sidebar - only show if not on hidden layout pages */}
-      {!hideLayout && <Sidebar />}
+      {!hideLayout && (
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+      )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 min-h-screen transition-colors duration-200 ${
-        !hideLayout ? 'ml-64' : ''
-      } ${theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+      <div className={`flex-1 min-h-screen transition-colors duration-200 ${!hideLayout ? 'md:ml-64' : ''
+        } ${theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
         <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8">
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -72,7 +75,7 @@ function App() {
 
 function AppContent() {
   const { theme } = useTheme();
-  
+
   // Apply theme class to document element
   React.useEffect(() => {
     const root = window.document.documentElement;
@@ -86,9 +89,8 @@ function AppContent() {
   }, [theme]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'
-    }`}>
+    <div className={`min-h-screen transition-colors duration-200 ${theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'
+      }`}>
       <Layout />
     </div>
   );

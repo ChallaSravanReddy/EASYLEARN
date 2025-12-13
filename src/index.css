@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ffd700;
+  --color-dark: #181824;
+  --color-light: #fafafa;
+  --font-caveat: 'Caveat', cursive;
+}
+
+/* Custom variant for class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
 
 html, body {
   margin: 0;
