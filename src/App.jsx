@@ -23,43 +23,29 @@ function Layout() {
   const location = useLocation();
   const { theme } = useTheme();
 
-  // Hide Sidebar & Footer on specific pages
-  const hideLayout = [
-    "/login",
-    "/register",
-    "/course/javascript/introduction"
-  ].includes(location.pathname);
-
+  // Hide Navbar & Footer on login and register pages, and the timeline player page
+  const hideLayout = location.pathname === "/login" ||location.pathname === "/dashboard" || location.pathname === "/register" || location.pathname === "/course/javascript/introduction";
+  
   // Show WebChat only on the TimelineCodePlayer page
   const showWebChat = location.pathname === "/course/javascript/introduction";
+  //above line to remove for chatbot removal
 
   return (
-    <>
-      {/* Sidebar - only show if not on hidden layout pages */}
-      {!hideLayout && (
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className={`flex-1 min-h-screen transition-colors duration-200 ${!hideLayout ? 'md:ml-64' : ''
-        } ${theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-        <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/course/:courseName" element={<CourseSyllabus />} />
-            <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
-          </Routes>
-        </main>
-        {!hideLayout && <Footer />}
-        {showWebChat && <WebChat />}
-      </div>
-    </>
+    <div className={styles.app}>
+      {!hideLayout && <Navbar />}
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/Profile" element={<Profile />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/course/:courseName" element={<CourseSyllabus />} />
+        <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
+      </Routes>
+      {!hideLayout && <Footer />}
+      {showWebChat && <WebChat />}
+      {/*above line to remove for chatbot removal*/}
+    </div>
   );
 }
 

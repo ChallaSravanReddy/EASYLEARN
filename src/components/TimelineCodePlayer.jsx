@@ -235,18 +235,18 @@ function TimelineCodePlayer() {
         };
     }, []);
 
-    // // Handle keyboard shortcuts
-    // useEffect(() => {
-    //     const handleKeyDown = (e) => {
-    //         if (e.code === 'Space') {
-    //             e.preventDefault();
-    //             togglePlay();
-    //         }
-    //     };
+    // Handle keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+        };
 
-    //     window.addEventListener('keydown', handleKeyDown);
-    //     return () => window.removeEventListener('keydown', handleKeyDown);
-    // }, [togglePlay]);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [togglePlay]);
 
     // Stop playback
     const stopPlayback = useCallback(() => {

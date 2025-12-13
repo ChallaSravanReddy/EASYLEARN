@@ -5,6 +5,7 @@ import userImg from "../assets/user.jpg";
 export default function Navbar() {
   const navigate = useNavigate();
 
+
   return (
     <nav className="flex justify-between items-center px-8 py-4 bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-md transition-all duration-300">
       <div className="flex items-center gap-8">
