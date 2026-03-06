@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 export default function WebChat() {
   const [isOpen, setIsOpen] = React.useState(false);

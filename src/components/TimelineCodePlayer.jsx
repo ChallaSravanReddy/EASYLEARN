@@ -120,7 +120,7 @@ function TimelineCodePlayer() {
     const [hasStarted, setHasStarted] = useState(false);
     const [showStartButton, setShowStartButton] = useState(true);
     const intervalRef = useRef(null);
-    const [language, setLanguage] = useState("javascript");
+    const [language] = useState("javascript");
     const nodeRef = useRef(null); // For Draggable
     const [showVideo, setShowVideo] = useState(true);
 
@@ -306,7 +306,7 @@ function TimelineCodePlayer() {
                 videoRef.current.currentTime = currentTime;
             }
         }
-    }, [currentTime, isUserEditing, hasStarted]);
+    }, [currentTime, isUserEditing, hasStarted, isPlaying]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -359,7 +359,7 @@ function TimelineCodePlayer() {
     // Calculate slider background for progress
     const sliderProgress = (currentTime / maxTime) * 100;
     const sliderStyle = {
-        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${sliderProgress}%, #4b5563 ${sliderProgress}%, #4b5563 100%)`,
+        background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${sliderProgress}%, #4b5563 ${sliderProgress}%, #4b5563 100%)`,
     };
         
     return (

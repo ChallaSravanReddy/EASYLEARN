@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
 // Layout Components
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 // Pages
@@ -21,30 +22,38 @@ import "./App.css";
 
 function Layout() {
   const location = useLocation();
-  const { theme } = useTheme();
 
-  // Hide Navbar & Footer on login and register pages, and the timeline player page
-  const hideLayout = location.pathname === "/login" ||location.pathname === "/dashboard" || location.pathname === "/register" || location.pathname === "/course/javascript/introduction";
+  // Hide Navbar & Footer on login, register, timeline player, and landing pages
+  const hideLayout = 
+    location.pathname === "/login" || 
+    location.pathname === "/register" || 
+    location.pathname === "/course/javascript/introduction" ||
+    location.pathname === "/";
   
   // Show WebChat only on the TimelineCodePlayer page
   const showWebChat = location.pathname === "/course/javascript/introduction";
   //above line to remove for chatbot removal
 
   return (
-    <div className={styles.app}>
-      {!hideLayout && <Navbar />}
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/Profile" element={<Profile />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/course/:courseName" element={<CourseSyllabus />} />
-        <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
-      </Routes>
-      {!hideLayout && <Footer />}
-      {showWebChat && <WebChat />}
-      {/*above line to remove for chatbot removal*/}
+    <div className="flex min-h-screen bg-transparent">
+      {!hideLayout && <Sidebar />}
+      {/* Explicit margin-left is required because Sidebar is fixed */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'md:ml-64' : ''}`}>
+        {!hideLayout && <Navbar />}
+        <main className={`flex-1 w-full overflow-x-hidden p-6 md:p-10 pb-8`}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/Profile" element={<Profile />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/course/:courseName" element={<CourseSyllabus />} />
+            <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
+          </Routes>
+        </main>
+        {!hideLayout && <Footer />}
+        {showWebChat && <WebChat />}
+      </div>
     </div>
   );
 }

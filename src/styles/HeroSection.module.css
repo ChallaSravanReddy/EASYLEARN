@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(90deg, #ffd700 0%, #e9c515 100%);
+  background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
   padding: 3rem 4rem;
   border-radius: 18px;
   box-shadow: 0 4px 24px rgba(32,32,32,0.08);
@@ -14,7 +14,7 @@
 
 /* Dark mode styles */
 .dark .heroBanner {
-  background: linear-gradient(90deg, #7c3aed 0%, #5b21b6 100%);
+  background: linear-gradient(90deg, #4f46e5 0%, #3730a3 100%);
   box-shadow: 0 4px 24px rgba(0,0,0,0.3);
 }
 
@@ -55,7 +55,7 @@
 .bannerTitle {
   font-size: 2.8rem;
   font-weight: bold;
-  color: #181824;
+  color: #ffffff;
   margin-bottom: 1.2rem;
 }
 
@@ -66,7 +66,7 @@
 
 .bannerDesc {
   font-size: 1.25rem;
-  color: #333;
+  color: #e0e7ff;
   margin-bottom: 2rem;
 }
 
@@ -76,8 +76,8 @@
 }
 
 .enrollBtn {
-  background: #181824;
-  color: #ffd700;
+  background: #ffffff;
+  color: #6366f1;
   border: none;
   border-radius: 8px;
   padding: 1rem 2.5rem;
@@ -90,20 +90,20 @@
 
 /* Dark mode button styles */
 .dark .enrollBtn {
-  background: #ffd700;
-  color: #181824;
+  background: #0f172a;
+  color: #ffffff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .enrollBtn:hover {
-  background: #333;
+  background: #f8fafc;
   transform: scale(1.05);
 }
 
 /* Dark mode button hover */
 .dark .enrollBtn:hover {
-  background: #e9c515;
-  color: #181824;
+  background: #1e293b;
+  color: #ffffff;
 }
 
 .bannerRight {

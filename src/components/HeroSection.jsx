@@ -17,7 +17,7 @@ export default function HeroSection() {
         <img
           src={FullStackImage}
           alt="Full Stack Course"
-          className={styles.bannerImage}s
+          className={styles.bannerImage}
         />
       </div>
     </div>
