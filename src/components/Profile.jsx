@@ -40,7 +40,7 @@ const Profile = () => {
           </div>
 
           <div className="flex-1 text-center md:text-left z-10">
-            <h2 className="text-4xl font-bold text-gray-900 font-caveat tracking-wide">{user.name}</h2>
+            <h2 className="text-4xl font-bold text-gray-900 tracking-tight">{user.name}</h2>
             <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3 text-gray-600">
               <span className="flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

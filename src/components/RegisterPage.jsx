@@ -43,7 +43,7 @@ const RegisterPage = () => {
         {/* Form Section */}
         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
           <div className="mb-8 text-center md:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 font-caveat tracking-wide mb-2">Create Account</h2>
+            <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">Create Account</h2>
             <p className="text-gray-500">Join our community of learners today</p>
           </div>
 
@@ -145,7 +145,7 @@ const RegisterPage = () => {
             <img src={RegisterImage} alt="Register Illustration" className="w-full h-auto object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500" />
           </div>
           <div className="absolute bottom-0 left-0 w-full p-12 bg-gradient-to-t from-black/50 to-transparent text-white">
-            <h3 className="text-2xl font-bold font-caveat tracking-wide">Join thousands of students</h3>
+            <h3 className="text-2xl font-bold tracking-tight">Join thousands of students</h3>
             <p className="mt-2 opacity-90">Master new skills and advance your career.</p>
           </div>
         </div>

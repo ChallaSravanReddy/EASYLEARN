@@ -1,36 +1,18 @@
 import React from 'react';
-import './timeline-styles.css'; // import the CSS that contains .output-panel-container
 
 
 const OutputPanel = ({ outputCode }) => {
-  const styles = {
-    panel: {
-      width: '250px',
-      height: '250px',
-      border: '2px solid #007acc',
-      borderRadius: '8px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-      overflow: 'hidden',
-      background: 'white',
-    },
-    iframe: {
-      width: '100%',
-      height: '100%',
-      border: 'none',
-    },
-  };
-
   return (
-    <div className="output-panel-container">
-    <div style={styles.panel}>
-      <iframe
-        style={styles.iframe}
-        title="Code Output"
-        sandbox="allow-scripts"
-        srcDoc={outputCode}
-      />
+    <div className="flex justify-center">
+      <div className="w-64 h-64 border-2 border-blue-500 rounded-lg shadow-lg overflow-hidden bg-white">
+        <iframe
+          className="w-full h-full border-none"
+          title="Code Output"
+          sandbox="allow-scripts"
+          srcDoc={outputCode}
+        />
+      </div>
     </div>
-  </div>
   );
 };
 

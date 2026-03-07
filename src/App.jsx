@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
 // Layout Components
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 // Pages
@@ -23,23 +22,20 @@ import "./App.css";
 function Layout() {
   const location = useLocation();
 
-  // Hide Navbar & Footer on login, register, timeline player, and landing pages
-  const hideLayout = 
-    location.pathname === "/login" || 
-    location.pathname === "/register" || 
-    location.pathname === "/course/javascript/introduction" ||
-    location.pathname === "/";
-  
+  // Hide Sidebar & Footer on login, register, timeline player pages
+  const hideLayout =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/course/javascript/introduction";
+
   // Show WebChat only on the TimelineCodePlayer page
   const showWebChat = location.pathname === "/course/javascript/introduction";
-  //above line to remove for chatbot removal
 
   return (
     <div className="flex min-h-screen bg-transparent">
       {!hideLayout && <Sidebar />}
       {/* Explicit margin-left is required because Sidebar is fixed */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'md:ml-64' : ''}`}>
-        {!hideLayout && <Navbar />}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'main-content-shifted' : ''}`}>
         <main className={`flex-1 w-full overflow-x-hidden p-6 md:p-10 pb-8`}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -84,7 +80,7 @@ function AppContent() {
   }, [theme]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'
+    <div className={`min-h-screen transition-colors duration-200 ${theme === 'dark' ? 'bg-slate-950 text-gray-100' : 'bg-gray-50 text-gray-900'
       }`}>
       <Layout />
     </div>

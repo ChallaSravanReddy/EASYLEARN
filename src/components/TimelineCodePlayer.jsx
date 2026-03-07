@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef,useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, Pause, Square, UndoDot, RotateCcw } from 'lucide-react';
-import './timeline-styles.css'; // Import the CSS file
+// styling is handled with Tailwind classes; external stylesheet no longer required
+
 import OutputPanel from './OutputPanel';
 import Draggable from 'react-draggable';
 
@@ -363,23 +364,13 @@ function TimelineCodePlayer() {
     };
         
     return (
+        <div className="relative w-full min-h-screen bg-slate-900 text-white">
+          {/* custom range thumb styles for consistent appearance */}
+          <style>{`input[type=range]::-webkit-slider-thumb { width:14px; height:14px; border-radius:50%; background:#6366f1; cursor:pointer; }
+          input[type=range]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:#6366f1; cursor:pointer; }`}</style>
 
-        <div className="timeline-container">
-            <div className="editor-wrapper">
-                {/* <div className="editor-controls">
-                    <select 
-                        value={language} 
-                        onChange={(e) => setLanguage(e.target.value)} 
-                        className="language-selector"
-                    >
-                        <option value="javascript">JavaScript</option>
-                        <option value="python">Python</option>
-                        <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                        <option value="html">HTML</option>
-                        <option value="css">CSS</option>
-                    </select>
-                </div> */}
+            <div className="relative flex flex-col items-center justify-center h-full">
+                {/* editor area */}
                 <div 
                     onClick={() => {
                         if (isPlaying) {
@@ -392,10 +383,10 @@ function TimelineCodePlayer() {
                             }
                         }
                     }}
-                    style={{ height: '100%', width: '100%' }}
+                    className="w-full h-[80vh]"
                 >
                     <Editor
-                        height="80vh"
+                        height="100%"
                         language={language}
                         theme="vs-dark"
                         value={currentCode}
@@ -409,89 +400,78 @@ function TimelineCodePlayer() {
                     />
                 </div>
                 {/* Video Panel */}
-                <div className={`video-panel ${showVideo ? 'show' : 'hide'}`}>
-                    
-                    <video
-                        ref={videoRef}
-                        src="/javascript-intro.mp4" // Ensure this path is correct
-                        style={{
-                            width: '100%',
-                            height: 'calc(100% - 40px)',
-                            display: 'block',
-                            backgroundColor: 'transparent',
-                            objectFit: 'contain'
-                        }}
-                        autoPlay
-                        playsInline
-                    />
-                </div>
-                {/* Start Button Overlay - Triangular Play Button in Center */}
+                {showVideo && (
+                    <div className="absolute top-0 right-0 w-1/3 h-full bg-black/70 flex items-center justify-center">
+                        <video
+                            ref={videoRef}
+                            src="/javascript-intro.mp4"
+                            className="w-full h-full object-contain"
+                            autoPlay
+                            playsInline
+                        />
+                    </div>
+                )}
+                {/* Start Button Overlay */}
                 {showStartButton && (
-                    <div className="start-overlay">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                         <button
                             onClick={startTimeline}
-                            className="start-button"
+                            className="p-6 bg-indigo-600 text-white rounded-full shadow-2xl hover:scale-110 transition-transform"
                         >
-                            <div className="triangle-play" />
+                            <svg width="0" height="0" className="hidden">
+                                {/* placeholder for triangle */}
+                            </svg>
+                            <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-12 border-b-white" />
                         </button>
                     </div>
                 )}
 
-                {/* Controls Overlay - Top of Editor */}
+                {/* Controls Overlay */}
                 {hasStarted && (
-                    <div className="controls-overlay">
-                        <div className="controls-panel">
-                            <div className="controls-row">
-                                <div className="controls-buttons">
+                    <div className="absolute bottom-4 left-4 right-4 flex justify-center">
+                        <div className="bg-black/80 backdrop-blur-sm rounded-lg p-4 w-full max-w-3xl space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
                                     <button
                                         onClick={togglePlay}
-                                        className="control-button play-button"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition bg-indigo-600 hover:bg-indigo-700"
                                     >
-                                        {isPlaying ? (
-                                            <Pause className="icon" />
-                                        ) : (
-                                            <Play className="icon" />
-                                        )}
+                                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                                         {isPlaying ? 'Pause' : 'Play'}
                                     </button>
-
                                     <button
                                         onClick={stopPlayback}
-                                        className="control-button stop-button"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition bg-red-600 hover:bg-red-700"
                                     >
-                                        <RotateCcw className="icon" />
-                                        RESET
+                                        <RotateCcw className="w-4 h-4" /> RESET
                                     </button>
-
                                     {isUserEditing && (
                                         <button
                                             onClick={resumeTimeline}
-                                            className="control-button resume-button"
+                                            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition bg-green-600 hover:bg-green-700"
                                         >
-                                            <UndoDot className="icon" />
-                                            RESET CODE
+                                            <UndoDot className="w-4 h-4" /> RESET CODE
                                         </button>
                                     )}
                                 </div>
-
-                                <span className="time-display">
+                                <span className="text-xs font-mono bg-black/50 px-2 py-0.5 rounded">
                                     {currentTime}s / {maxTime}s
                                 </span>
                             </div>
 
-                            {/* Timeline Slider */}
-                            <div className="slider-container">
-                                <span className="slider-label">0s</span>
+                            {/* Slider */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-300 w-6">0s</span>
                                 <input
                                     type="range"
                                     min="0"
                                     max={maxTime}
                                     value={currentTime}
                                     onChange={handleSliderChange}
-                                    className="timeline-slider"
+                                    className="flex-1 h-2 rounded-lg appearance-none bg-gray-600"
                                     style={sliderStyle}
                                 />
-                                <span className="slider-label">{maxTime}s</span>
+                                <span className="text-xs text-slate-300 w-6">{maxTime}s</span>
                             </div>
                         </div>
                     </div>
@@ -530,7 +510,7 @@ function TimelineCodePlayer() {
             </div>
         </Draggable>
       </div>
-        </div>
+    </div>  {/* close outer relative container */}
     );
 }
 

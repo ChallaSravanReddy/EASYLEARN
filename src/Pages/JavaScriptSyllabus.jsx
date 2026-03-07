@@ -2,9 +2,9 @@ import React from "react";
 
 export default function JavaScriptSyllabus() {
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>JavaScript Syllabus</h2>
-      <ul>
+    <div className="p-8 max-w-3xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">JavaScript Syllabus</h2>
+      <ul className="list-disc list-inside space-y-2 text-gray-700">
         <li>Introduction to JavaScript</li>
         <li>Variables and Data Types</li>
         <li>Operators and Expressions</li>
