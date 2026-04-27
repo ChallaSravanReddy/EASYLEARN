@@ -3,23 +3,31 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import userImg from '../assets/user.jpg';
 import {
   Home, LayoutDashboard, BookOpen, Globe, Code2,
-  LogOut, ChevronRight, GraduationCap
+  LogOut, ChevronRight, GraduationCap, PenTool
 } from 'lucide-react';
-
-const navItems = [
-  { name: 'Home', path: '/', icon: Home },
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'My Courses', path: '/courses', icon: BookOpen },
-  { name: 'Languages', path: '/languages', icon: Globe },
-  { name: 'Projects', path: '/projects', icon: Code2 },
-];
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { userRole } = useAuth();
+
+  const navItems = userRole === 'instructor' 
+    ? [
+        { name: 'Home', path: '/', icon: Home },
+        { name: 'Instructor Dashboard', path: '/instructor-dashboard', icon: LayoutDashboard },
+        { name: 'Create Lesson', path: '/instructor/lesson/new', icon: PenTool },
+      ]
+    : [
+        { name: 'Home', path: '/', icon: Home },
+        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { name: 'My Courses', path: '/courses', icon: BookOpen },
+        { name: 'Languages', path: '/languages', icon: Globe },
+        { name: 'Projects', path: '/projects', icon: Code2 },
+      ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 hidden md:flex flex-col z-[100] bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800">
+    <aside className="fixed left-0 top-0 h-full w-64 hidden md:flex flex-col z-[100] bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl border-r border-gray-200/50 dark:border-slate-800/50">
 
       {/* ── Brand ──────────────────────────────────── */}
       <div
@@ -48,17 +56,17 @@ const Sidebar = () => {
                 <Link
                   to={item.path}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
+                    flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300
                     ${isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400'
-                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800/70 hover:text-gray-900 dark:hover:text-white'
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm shadow-indigo-100/50 dark:shadow-none'
+                      : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white'
                     }
                   `}
                 >
-                  <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-indigo-600' : 'text-gray-400 dark:text-slate-500'}`} strokeWidth={isActive ? 2.5 : 2} />
+                  <Icon className={`w-4.5 h-4.5 shrink-0 transition-transform duration-300 ${isActive ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-gray-400 dark:text-slate-500 group-hover:scale-110'}`} strokeWidth={isActive ? 2.5 : 2} />
                   <span>{item.name}</span>
                   {isActive && (
-                    <ChevronRight className="w-3.5 h-3.5 ml-auto text-indigo-400" />
+                    <ChevronRight className="w-3.5 h-3.5 ml-auto text-indigo-500 dark:text-indigo-400" />
                   )}
                 </Link>
               </li>

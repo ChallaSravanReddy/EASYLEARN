@@ -1,12 +1,5 @@
 @import "tailwindcss";
 
-/* Reset some default browser styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 /* Ensure the app takes full height and allows scrolling */
 html,
 body,
@@ -15,9 +8,6 @@ body,
   height: auto;
   width: 100%;
   overflow-x: hidden;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #f9f9f9;
-  color: #222;
 }
 
 /* Utility class for main containers */
@@ -27,18 +17,33 @@ body,
   height: auto;
   overflow-y: auto;
   padding-bottom: 40px;
-  /* for footer spacing */
 }
 
-/* Optional: Style scrollbars for better UX */
+/* Modern scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  background: #eee;
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: #cbd5e1; /* slate-300 */
   border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* slate-600 */
 }
 
 /* Sidebar overlap fix */

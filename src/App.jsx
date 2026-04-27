@@ -1,6 +1,6 @@
-
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 
 // Layout Components
 import Footer from "./components/Footer";
@@ -15,6 +15,8 @@ import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
 import CourseSyllabus from "./components/CourseSyllabus";
 import TimelineCodePlayer from "./components/TimelineCodePlayer";
+import TimelineEditor from "./components/TimelineEditor";
+import InstructorDashboard from "./components/InstructorDashboard";
 import WebChat from "./components/WebChat";
 
 import "./App.css";
@@ -22,14 +24,16 @@ import "./App.css";
 function Layout() {
   const location = useLocation();
 
-  // Hide Sidebar & Footer on login, register, timeline player pages
+  // Hide Sidebar & Footer on login, register, timeline player/editor pages
   const hideLayout =
     location.pathname === "/login" ||
     location.pathname === "/register" ||
+    location.pathname.startsWith("/lesson/") ||
+    location.pathname.startsWith("/instructor/lesson/new") ||
     location.pathname === "/course/javascript/introduction";
 
   // Show WebChat only on the TimelineCodePlayer page
-  const showWebChat = location.pathname === "/course/javascript/introduction";
+  const showWebChat = location.pathname.startsWith("/lesson/") || location.pathname === "/course/javascript/introduction";
 
   return (
     <div className="flex min-h-screen bg-transparent">
@@ -45,6 +49,11 @@ function Layout() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/course/:courseName" element={<CourseSyllabus />} />
             <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
+            
+            {/* Engine & Instructor Routes */}
+            <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
+            <Route path="/instructor/lesson/new" element={<TimelineEditor />} />
+            <Route path="/lesson/:lessonId" element={<TimelineCodePlayer />} />
           </Routes>
         </main>
         {!hideLayout && <Footer />}
@@ -57,9 +66,11 @@ function Layout() {
 function App() {
   return (
     <Router>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
     </Router>
   );
 }
@@ -80,8 +91,7 @@ function AppContent() {
   }, [theme]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${theme === 'dark' ? 'bg-slate-950 text-gray-100' : 'bg-gray-50 text-gray-900'
-      }`}>
+    <div className="min-h-screen transition-colors duration-300">
       <Layout />
     </div>
   );
