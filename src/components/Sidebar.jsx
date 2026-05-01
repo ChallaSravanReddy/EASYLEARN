@@ -6,11 +6,12 @@ import {
   LogOut, ChevronRight, GraduationCap, PenTool
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userRole } = useAuth();
+  const { userRole, currentUser } = useAuth();
 
   const navItems = userRole === 'instructor' 
     ? [
@@ -83,20 +84,27 @@ const Sidebar = () => {
         >
           <div className="relative shrink-0">
             <img
-              src={userImg}
+              src={currentUser?.user_metadata?.avatar_url || userImg}
               alt="user"
               className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200 dark:ring-slate-700"
             />
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-950 rounded-full" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">Student Name</p>
-            <p className="text-[11px] text-gray-500 dark:text-slate-500 truncate">Premium Member</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
+              {currentUser?.user_metadata?.full_name || 'Student Name'}
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-slate-500 truncate capitalize">
+              {userRole === 'instructor' ? 'Instructor' : 'Student'}
+            </p>
           </div>
         </div>
 
         <button
-          onClick={() => navigate('/login')}
+          onClick={async () => {
+            await supabase.auth.signOut();
+            navigate('/login');
+          }}
           className="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
         >
           <LogOut className="w-4 h-4 shrink-0" />

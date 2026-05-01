@@ -4,7 +4,7 @@ import { Play, Pause, Square, UndoDot, RotateCcw, Upload, FileJson, Video as Vid
 import Draggable from 'react-draggable';
 import OutputPanel from './OutputPanel';
 import { useParams, useNavigate } from 'react-router-dom';
-
+import { useAuth } from '../context/AuthContext';
 
 const DEMO_TIMELINE = [
   { time: 0, code: `// Welcome to JavaScript Basics!\n// Click Play to start the interactive lesson.` },
@@ -114,6 +114,7 @@ const generateOutputHTML = (files, currentJsCode) => {
 export default function TimelineCodePlayer() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const { userRole } = useAuth();
 
   // Engine Setup State
   const [isSetupComplete, setIsSetupComplete] = useState(false);
@@ -247,13 +248,22 @@ export default function TimelineCodePlayer() {
   const nodeRef = useRef(null); // Output Panel Draggable
   const videoDragRef = useRef(null); // Video Draggable
 
-  // ─── Fetch From Firestore if lessonId exists ──────────────────────────────
+  // ─── Fetch From Firestore if lessonId exists / Auto-load for students ───
   useEffect(() => {
     if (lessonId) {
       setIsLoadingDB(false);
       alert("Database removed. Cannot fetch lessons.");
     }
-  }, [lessonId, navigate]);
+
+    // Automatically load the lesson for anyone who is NOT an instructor (including students and unauthenticated users)
+    if (userRole !== 'instructor' && !isSetupComplete) {
+      setMediaType('video');
+      setMediaUrl('/javascript-intro.mp4'); // Fallback to a local path or external URL
+      setTimelineData(DEMO_TIMELINE);
+      setCurrentCode(DEMO_TIMELINE[0].code);
+      setIsSetupComplete(true);
+    }
+  }, [lessonId, navigate, userRole, isSetupComplete]);
 
   // ─── Setup Handlers (Local Testing) ───────────────────────────────────────
 
@@ -425,53 +435,65 @@ export default function TimelineCodePlayer() {
       <div className="min-h-[calc(100vh-80px)] w-full flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0f172a]">
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 max-w-2xl w-full shadow-2xl shadow-indigo-500/10 border border-slate-200 dark:border-slate-800">
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">Interactive Engine Setup</h1>
-            <p className="text-slate-500 dark:text-slate-400">Upload your media and timeline JSON to start the synchronized code player locally.</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
+              {userRole === 'instructor' ? 'Interactive Engine Setup' : 'Interactive Lesson'}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              {userRole === 'instructor' 
+                ? 'Upload your media and timeline JSON to start the synchronized code player locally.' 
+                : 'Load the interactive lesson to begin your synchronized coding experience.'}
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 mb-10">
-            {/* Media Upload */}
-            <div className="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50">
-              <input type="file" accept="video/mp4,audio/mp3,audio/wav" onChange={handleMediaUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                  <VideoIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          {userRole === 'instructor' && (
+            <div className="grid md:grid-cols-2 gap-6 mb-10">
+              {/* Media Upload */}
+              <div className="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50">
+                <input type="file" accept="video/mp4,audio/mp3,audio/wav" onChange={handleMediaUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                    <VideoIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">Upload Media</p>
+                    <p className="text-xs text-slate-500 mt-1">{mediaFileName || "MP4, MP3, WAV"}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-white">Upload Media</p>
-                  <p className="text-xs text-slate-500 mt-1">{mediaFileName || "MP4, MP3, WAV"}</p>
+              </div>
+
+              {/* JSON Upload */}
+              <div className="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50">
+                <input type="file" accept=".json" onChange={handleJsonUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                    <FileJson className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">Upload Timeline</p>
+                    <p className="text-xs text-slate-500 mt-1">{jsonFileName || "JSON Format"}</p>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* JSON Upload */}
-            <div className="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50">
-              <input type="file" accept=".json" onChange={handleJsonUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-                  <FileJson className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-white">Upload Timeline</p>
-                  <p className="text-xs text-slate-500 mt-1">{jsonFileName || "JSON Format"}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-4">
-            <button
-              onClick={startEngine}
-              disabled={!mediaUrl || timelineData.length === 0}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
-            >
-              Launch Local Engine
-            </button>
-            <div className="relative flex items-center py-2">
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-400 text-sm font-medium">OR</span>
-              <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-            </div>
+            {userRole === 'instructor' && (
+              <>
+                <button
+                  onClick={startEngine}
+                  disabled={!mediaUrl || timelineData.length === 0}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+                >
+                  Launch Local Engine
+                </button>
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                  <span className="flex-shrink-0 mx-4 text-slate-400 text-sm font-medium">OR</span>
+                  <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                </div>
+              </>
+            )}
             <button onClick={loadDemo} className="w-full py-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 text-slate-700 dark:text-white font-bold rounded-xl transition-all">
               Load Demo Lesson
             </button>

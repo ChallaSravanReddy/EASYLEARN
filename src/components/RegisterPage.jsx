@@ -1,25 +1,80 @@
 import React, { useState } from 'react';
-
 import { useNavigate, Link } from 'react-router-dom';
 import googleLogo from "../assets/googlelogo.png";
 import iosLogo from "../assets/ioslogo.png";
 import fbLogo from "../assets/fblogo.png";
 import RegisterImage from "../assets/registerimage.png";
+import { supabase } from '../supabaseClient'; // Import Supabase client
 
 const RegisterPage = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    console.log('Mock registration successful!');
-    if (role === 'instructor') {
-      navigate('/instructor-dashboard');
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Register user with Supabase, saving role and fullName to user_metadata
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      console.log('Registration successful!', data);
+      
+      // Navigate based on selected role
+      if (role === 'instructor') {
+        navigate('/instructor-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Registration Error:', err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (providerName) => {
+    if (providerName === 'Google') {
+      try {
+        setLoading(true);
+        setError(null);
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/dashboard`,
+            queryParams: {
+              // Pass role so we could theoretically handle it later, or just default to student
+              prompt: 'select_account'
+            }
+          }
+        });
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error(`${providerName} Login Error:`, err.message);
+        setError(err.message);
+        setLoading(false);
+      }
     } else {
-      navigate('/dashboard');
+      setError(`${providerName} login is not yet configured.`);
     }
   };
 
@@ -98,8 +153,14 @@ const RegisterPage = () => {
               <label htmlFor="terms">I agree to the <a href="#" className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Terms of Service</a> & <a href="#" className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Privacy Policy</a></label>
             </div>
 
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-              Create Account
+            {error && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium">
+                {error}
+              </div>
+            )}
+
+            <button disabled={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
@@ -114,12 +175,18 @@ const RegisterPage = () => {
             </div>
 
             <div className="flex justify-center gap-6 mt-6">
-              {[googleLogo, iosLogo, fbLogo].map((logo, index) => (
+              {[
+                { icon: googleLogo, name: 'Google' },
+                { icon: iosLogo, name: 'Apple' },
+                { icon: fbLogo, name: 'Facebook' }
+              ].map((item, index) => (
                 <button
                   key={index}
+                  type="button"
+                  onClick={() => handleSocialLogin(item.name)}
                   className="p-3 rounded-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-all transform hover:-translate-y-1 hover:shadow-md dark:shadow-none"
                 >
-                  <img src={logo} alt="Social Login" className="w-6 h-6 object-contain" />
+                  <img src={item.icon} alt={item.name} className="w-6 h-6 object-contain" />
                 </button>
               ))}
             </div>

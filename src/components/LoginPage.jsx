@@ -1,28 +1,71 @@
 import React, { useState } from 'react';
-
 import { useNavigate, Link } from 'react-router-dom';
 import googleLogo from "../assets/googlelogo.png";
 import iosLogo from "../assets/ioslogo.png";
 import fbLogo from "../assets/fblogo.png";
 import loginImage from "../assets/loginimage.png";
+import { supabase } from '../supabaseClient'; // Import Supabase client
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // Mock login logic
-    if (email === 'instructor@test.com') {
-      navigate('/instructor-dashboard');
-    } else {
-      navigate('/dashboard');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      console.log('Login successful!', data);
+
+      // Check role from user_metadata
+      const role = data.user?.user_metadata?.role || 'student';
+      
+      if (role === 'instructor') {
+        navigate('/instructor-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Login Error:', err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSocialLogin = async (providerName) => {
-    navigate('/dashboard');
+    if (providerName === 'Google') {
+      try {
+        setLoading(true);
+        setError(null);
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            // Redirect back to the application after successful login
+            redirectTo: `${window.location.origin}/dashboard`
+          }
+        });
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error(`${providerName} Login Error:`, err.message);
+        setError(err.message);
+        setLoading(false);
+      }
+    } else {
+      setError(`${providerName} login is not yet configured.`);
+    }
   };
 
   return (
@@ -75,8 +118,14 @@ const LoginPage = () => {
               <a href="#" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Forgot Password?</a>
             </div>
 
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-              Sign In
+            {error && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium">
+                {error}
+              </div>
+            )}
+
+            <button disabled={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
