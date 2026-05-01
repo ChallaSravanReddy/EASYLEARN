@@ -4,8 +4,7 @@ import { Play, Pause, Square, UndoDot, RotateCcw, Upload, FileJson, Video as Vid
 import Draggable from 'react-draggable';
 import OutputPanel from './OutputPanel';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+
 
 const DEMO_TIMELINE = [
   { time: 0, code: `// Welcome to JavaScript Basics!\n// Click Play to start the interactive lesson.` },
@@ -18,25 +17,45 @@ const generateOutputHTML = (code) => `
 <html>
     <head>
     <style>
-        body { font-family: 'Inter', monospace; padding: 12px; background: #ffffff; margin: 0; color: #1e293b; }
-        pre { white-space: pre-wrap; font-size: 14px; margin: 0; }
-        .error { color: #ef4444; font-weight: bold; }
+        body { 
+          font-family: 'JetBrains Mono', 'Fira Code', monospace; 
+          padding: 16px; 
+          background: #0d1117; 
+          margin: 0; 
+          color: #e6edf3;
+          line-height: 1.5;
+        }
+        pre { white-space: pre-wrap; font-size: 13px; margin: 0; }
+        .prompt { color: #7ee787; margin-right: 8px; font-weight: bold; }
+        .log-entry { margin-bottom: 4px; display: flex; }
+        .error { color: #ff7b72; font-weight: bold; }
+        .system { color: #8b949e; font-style: italic; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
     </style>
     </head>
     <body>
-    <pre id="log"></pre>
+    <div id="log">
+      <div class="log-entry system">> Terminal initialized... Ready for execution.</div>
+    </div>
     <script>
         const logEl = document.getElementById("log");
-        console.log = (...args) => {
-          logEl.innerHTML += args.join(" ") + "\\n";
+        const appendLog = (content, className = "") => {
+          const div = document.createElement("div");
+          div.className = "log-entry " + className;
+          div.innerHTML = '<span class="prompt">$</span>' + content;
+          logEl.appendChild(div);
+          window.scrollTo(0, document.body.scrollHeight);
         };
-        console.error = (...args) => {
-          logEl.innerHTML += "<span class='error'>" + args.join(" ") + "</span>\\n";
-        };
+
+        console.log = (...args) => appendLog(args.join(" "));
+        console.error = (...args) => appendLog(args.join(" "), "error");
+        
         try {
           ${code}
         } catch (e) {
-          console.error("Error: " + e.message);
+          console.error("Runtime Error: " + e.message);
         }
     </script>
     </body>
@@ -75,30 +94,8 @@ export default function TimelineCodePlayer() {
   // ─── Fetch From Firestore if lessonId exists ──────────────────────────────
   useEffect(() => {
     if (lessonId) {
-      const fetchLesson = async () => {
-        try {
-          const docRef = doc(db, 'lessons', lessonId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setMediaUrl(data.mediaUrl);
-            // Defaulting to video for uploaded media
-            setMediaType('video'); 
-            setTimelineData(data.timelineData || []);
-            setCurrentCode(data.timelineData?.[0]?.code || '// Start playing to see code...');
-            setReadOnlyMode(true); // Student mode
-            setIsSetupComplete(true);
-          } else {
-            alert("Lesson not found!");
-            navigate('/dashboard');
-          }
-        } catch (err) {
-          alert("Error loading lesson.");
-        } finally {
-          setIsLoadingDB(false);
-        }
-      };
-      fetchLesson();
+      setIsLoadingDB(false);
+      alert("Database removed. Cannot fetch lessons.");
     }
   }, [lessonId, navigate]);
 
@@ -391,13 +388,20 @@ export default function TimelineCodePlayer() {
           </Draggable>
         )}
 
-        {/* Draggable Output Panel */}
-        <Draggable nodeRef={nodeRef} bounds="parent" defaultPosition={{ x: 24, y: window.innerHeight - 300 }}>
-          <div ref={nodeRef} className="absolute z-30 w-[400px] shadow-2xl shadow-black/50 rounded-xl overflow-hidden border border-[#333] bg-[#1e1e1e]">
-            <div className="h-8 bg-[#252526] flex items-center px-4 cursor-move border-b border-[#333]">
-              <span className="text-[11px] font-bold text-slate-300 tracking-widest uppercase">Console Output</span>
+        {/* Draggable Terminal Panel */}
+        <Draggable nodeRef={nodeRef} defaultPosition={{ x: window.innerWidth / 2 - 225, y: window.innerHeight / 2 - 150 }}>
+          <div ref={nodeRef} className="fixed top-0 left-0 z-[1000] w-[450px] shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#30363d] bg-[#0d1117] flex flex-col">
+            <div className="h-9 bg-[#161b22] flex items-center justify-between px-4 cursor-move border-b border-[#30363d]">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                  <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+                </div>
+                <span className="ml-2 text-[10px] font-bold text-slate-400 tracking-widest uppercase">bash — output</span>
+              </div>
             </div>
-            <div className="h-48 bg-white overflow-auto">
+            <div className="h-60 overflow-hidden">
               <OutputPanel outputCode={generateOutputHTML(currentCode)} />
             </div>
           </div>

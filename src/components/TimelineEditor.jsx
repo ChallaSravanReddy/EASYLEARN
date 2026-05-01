@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { db, storage } from '../firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
 import { Play, Pause, Save, Upload, Video as VideoIcon, CheckCircle2, ChevronLeft, ArrowRight } from 'lucide-react';
 
 export default function TimelineEditor() {
@@ -34,25 +32,12 @@ export default function TimelineEditor() {
       return;
     }
 
-    const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        alert("Upload failed: " + error.message);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          setMediaUrl(downloadURL);
-          setStep(2); // Move to Editor Phase
-        });
-      }
-    );
+    // Mock upload
+    setUploadProgress(100);
+    setTimeout(() => {
+      setMediaUrl(URL.createObjectURL(file));
+      setStep(2);
+    }, 1000);
   };
 
   // --- RECORDING ENGINE ---
@@ -94,21 +79,11 @@ export default function TimelineEditor() {
     }
     
     setIsPublishing(true);
-    try {
-      await addDoc(collection(db, 'lessons'), {
-        courseTitle,
-        lessonTitle,
-        mediaUrl,
-        timelineData,
-        createdAt: new Date()
-      });
-      alert("Lesson successfully published to database!");
+    setTimeout(() => {
+      alert("Mock publish successful!");
       window.location.reload();
-    } catch (err) {
-      alert("Error publishing: " + err.message);
-    } finally {
       setIsPublishing(false);
-    }
+    }, 1000);
   };
 
   // --- UI RENDER ---

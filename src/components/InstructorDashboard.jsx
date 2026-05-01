@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebaseConfig';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+
 import { useNavigate } from 'react-router-dom';
 import { Plus, Video as VideoIcon, Calendar, ArrowRight } from 'lucide-react';
 
@@ -11,16 +10,8 @@ export default function InstructorDashboard() {
 
   useEffect(() => {
     const fetchLessons = async () => {
-      try {
-        const q = query(collection(db, 'lessons'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLessons(data);
-      } catch (err) {
-        console.error("Error fetching lessons", err);
-      } finally {
-        setLoading(false);
-      }
+      setLessons([]);
+      setLoading(false);
     };
     fetchLessons();
   }, []);

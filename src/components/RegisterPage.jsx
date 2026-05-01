@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../firebaseConfig';
-import { doc, setDoc } from 'firebase/firestore';
+
 import { useNavigate, Link } from 'react-router-dom';
 import googleLogo from "../assets/googlelogo.png";
 import iosLogo from "../assets/ioslogo.png";
@@ -17,26 +15,11 @@ const RegisterPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      await setDoc(doc(db, 'users', user.uid), {
-        fullName: fullName,
-        email: email,
-        role: role,
-        createdAt: new Date(),
-      });
-
-      console.log('User registered and profile created successfully!');
-      if (role === 'instructor') {
-        navigate('/instructor-dashboard');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error registering user:', error.message);
-      alert(error.message);
+    console.log('Mock registration successful!');
+    if (role === 'instructor') {
+      navigate('/instructor-dashboard');
+    } else {
+      navigate('/dashboard');
     }
   };
 

@@ -44,19 +44,26 @@ export default function RecommendedCourses() {
           <div
             key={i}
             onClick={() => go(course.name)}
-            className="group bg-white dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-gray-100 dark:border-slate-800/60 overflow-hidden cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:bg-slate-800/80 transition-all duration-300 hover:-translate-y-1 flex flex-col"
+            className="group relative bg-white dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-gray-100 dark:border-slate-800/60 overflow-hidden cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/15 dark:hover:bg-slate-800/60 transition-all duration-500 hover:-translate-y-2 flex flex-col"
           >
+            {/* Subtle Glow Effect on Hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-transparent to-purple-500/0 group-hover:from-indigo-500/5 group-hover:to-purple-500/5 transition-all duration-500 pointer-events-none" />
             {/* Thumbnail */}
-            <div className="relative overflow-hidden h-40 bg-gray-50 dark:bg-slate-800 flex items-center justify-center p-6 border-b border-gray-100 dark:border-slate-700/50">
+            <div className="relative overflow-hidden aspect-video bg-gray-50 dark:bg-slate-950/50 flex items-center justify-center p-8 border-b border-gray-100 dark:border-slate-700/50">
               <img
                 src={course.img}
                 alt={course.name}
-                className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-md"
+                className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out drop-shadow-xl"
               />
               {/* Level badge on image */}
-              <span className={`absolute top-3 left-3 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border backdrop-blur-sm ${LEVEL_COLOR[course.level] ?? ''}`}>
+              <div className={`absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm backdrop-blur-md ${LEVEL_COLOR[course.level] ?? ''}`}>
                 {course.level}
-              </span>
+              </div>
+              
+              {/* Progress Indicator (Psychological Hook) */}
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 dark:bg-slate-800">
+                <div className="h-full bg-indigo-500 w-0 group-hover:w-1/4 transition-all duration-1000 ease-in-out" />
+              </div>
             </div>
 
             {/* Info */}
@@ -84,7 +91,7 @@ export default function RecommendedCourses() {
                 {/* CTA */}
                 <button
                   onClick={e => { e.stopPropagation(); go(course.name); }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white transition-all duration-300 group-hover:shadow-md group-hover:shadow-indigo-500/20"
+                  className="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-indigo-600 dark:bg-indigo-600 rounded-xl hover:bg-indigo-500 dark:hover:bg-indigo-500 transition-all duration-300 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 transform active:scale-95"
                 >
                   Start Learning <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>

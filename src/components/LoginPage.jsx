@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth';
-import { auth, db } from '../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+
 import { useNavigate, Link } from 'react-router-dom';
 import googleLogo from "../assets/googlelogo.png";
 import iosLogo from "../assets/ioslogo.png";
 import fbLogo from "../assets/fblogo.png";
 import loginImage from "../assets/loginimage.png";
-
-const googleProvider = new GoogleAuthProvider();
-const facebookProvider = new FacebookAuthProvider();
-const appleProvider = new OAuthProvider('apple.com');
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -19,34 +13,16 @@ const LoginPage = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await routeBasedOnRole(userCredential.user.uid);
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
-  const handleSocialLogin = async (provider) => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await routeBasedOnRole(result.user.uid);
-    } catch (error) {
-      alert(error.message);
-    }
-  };
-
-  const routeBasedOnRole = async (uid) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists() && userDoc.data().role === 'instructor') {
-        navigate('/instructor-dashboard');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (error) {
+    // Mock login logic
+    if (email === 'instructor@test.com') {
+      navigate('/instructor-dashboard');
+    } else {
       navigate('/dashboard');
     }
+  };
+
+  const handleSocialLogin = async (providerName) => {
+    navigate('/dashboard');
   };
 
   return (
@@ -116,13 +92,13 @@ const LoginPage = () => {
 
             <div className="flex justify-center gap-6 mt-6">
               {[
-                { icon: googleLogo, provider: googleProvider, alt: "Google" },
-                { icon: iosLogo, provider: appleProvider, alt: "Apple" },
-                { icon: fbLogo, provider: facebookProvider, alt: "Facebook" }
+                { icon: googleLogo, alt: "Google" },
+                { icon: iosLogo, alt: "Apple" },
+                { icon: fbLogo, alt: "Facebook" }
               ].map((item, index) => (
                 <button
                   key={index}
-                  onClick={() => handleSocialLogin(item.provider)}
+                  onClick={() => handleSocialLogin(item.alt)}
                   className="p-3 rounded-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-all transform hover:-translate-y-1 hover:shadow-md dark:shadow-none"
                 >
                   <img src={item.icon} alt={item.alt} className="w-6 h-6 object-contain" />
