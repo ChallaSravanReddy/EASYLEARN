@@ -18,6 +18,7 @@ import CourseSyllabus from "./components/CourseSyllabus";
 import TimelineCodePlayer from "./components/TimelineCodePlayer";
 import TimelineEditor from "./components/TimelineEditor";
 import InstructorDashboard from "./components/InstructorDashboard";
+import RecordingStudio from "./components/RecordingStudio";
 import WebChat from "./components/WebChat";
 
 import "./App.css";
@@ -55,6 +56,7 @@ function Layout() {
             {/* Engine & Instructor Routes */}
             <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
             <Route path="/instructor/lesson/new" element={<TimelineEditor />} />
+            <Route path="/studio" element={<RecordingStudio />} />
             <Route path="/lesson/:lessonId" element={<TimelineCodePlayer />} />
           </Routes>
         </main>
