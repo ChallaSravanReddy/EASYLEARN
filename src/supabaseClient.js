@@ -1,9 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize the Supabase client
-// IMPORTANT: You will need to replace these with your actual Supabase URL and Anon Key
-// from your Supabase Dashboard -> Project Settings -> API
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const isValidHttpUrl = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+export const isSupabaseConfigured = Boolean(
+  isValidHttpUrl(rawUrl) &&
+  rawKey &&
+  rawKey !== 'YOUR_SUPABASE_ANON_KEY'
+);
+
+// Fallback to a valid format URL and key to prevent client initialization crashes
+const supabaseUrl = isValidHttpUrl(rawUrl)
+  ? rawUrl
+  : 'https://placeholder.supabase.co';
+
+const supabaseAnonKey = (rawKey && rawKey !== 'YOUR_SUPABASE_ANON_KEY')
+  ? rawKey
+  : 'placeholder-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
