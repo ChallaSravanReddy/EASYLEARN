@@ -33,6 +33,7 @@ import {
 import { useScrimPlayer } from '../hooks/useScrimPlayer';
 import { DEMO_SCRIM_MANIFEST, generateSyntheticAudioDataUri } from '../utils/demoScrim';
 import type { ScrimManifest } from '../types/scrim';
+import CodePreviewIframe from './CodePreviewIframe';
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -491,23 +492,13 @@ export default function ScrimPlayerView() {
         {/* Right: Live Interactive Sandbox Preview */}
         {showLivePreview && (
           <div className="w-[45%] flex flex-col border-l border-slate-800 bg-slate-900 min-w-[320px]">
-            <div className="h-10 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between text-xs text-slate-300 font-semibold select-none">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Live Interactive Sandbox</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-normal">
-                Auto-evaluates in real-time
-              </span>
-            </div>
-            <div className="flex-1 bg-white relative">
-              <iframe
-                title="Interactive Scrim Sandbox"
-                srcDoc={previewHtml}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-modals allow-same-origin allow-forms"
-              />
-            </div>
+            <CodePreviewIframe
+              files={files}
+              entryFile="index.html"
+              title="Live Interactive Sandbox"
+              showConsoleDrawer={true}
+              defaultConsoleOpen={false}
+            />
           </div>
         )}
       </div>
