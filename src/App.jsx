@@ -19,6 +19,7 @@ import TimelineCodePlayer from "./components/TimelineCodePlayer";
 import TimelineEditor from "./components/TimelineEditor";
 import InstructorDashboard from "./components/InstructorDashboard";
 import RecordingStudio from "./components/RecordingStudio";
+import ScrimPlayerView from "./components/ScrimPlayerView";
 import WebChat from "./components/WebChat";
 
 import "./App.css";
@@ -57,6 +58,8 @@ function Layout() {
             <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
             <Route path="/instructor/lesson/new" element={<TimelineEditor />} />
             <Route path="/studio" element={<RecordingStudio />} />
+            <Route path="/player" element={<ScrimPlayerView />} />
+            <Route path="/scrim-player" element={<ScrimPlayerView />} />
             <Route path="/lesson/:lessonId" element={<TimelineCodePlayer />} />
           </Routes>
         </main>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import {
   Mic,
@@ -106,6 +107,7 @@ function formatDuration(ms: number): string {
 }
 
 export default function RecordingStudio() {
+  const navigate = useNavigate();
   const [files, setFiles] = useState<Record<string, string>>(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState<string>('index.html');
   const [lessonTitle, setLessonTitle] = useState<string>('Building an Interactive Component');
@@ -819,6 +821,23 @@ export default function RecordingStudio() {
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
                 >
                   <Download className="w-3.5 h-3.5" /> Download Manifest (.json)
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem(
+                        'easy_scrim_custom',
+                        JSON.stringify({
+                          scrimManifest: recordingResult.scrimManifest,
+                          audioUrl: recordingResult.audioUrl,
+                        })
+                      );
+                    } catch (e) {}
+                    navigate('/player');
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" /> Play in Scrim Player
                 </button>
               </div>
             </div>

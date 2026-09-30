@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import userImg from '../assets/user.jpg';
 import {
   Home, LayoutDashboard, BookOpen, Globe, Code2,
-  LogOut, ChevronRight, GraduationCap, PenTool, Radio
+  LogOut, ChevronRight, GraduationCap, PenTool, Radio, PlayCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -18,11 +18,13 @@ const Sidebar = () => {
         { name: 'Home', path: '/', icon: Home },
         { name: 'Instructor Dashboard', path: '/instructor-dashboard', icon: LayoutDashboard },
         { name: 'Recording Studio', path: '/studio', icon: Radio },
+        { name: 'Scrim Player', path: '/player', icon: PlayCircle },
         { name: 'Create Lesson', path: '/instructor/lesson/new', icon: PenTool },
       ]
     : [
         { name: 'Home', path: '/', icon: Home },
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { name: 'Scrim Player', path: '/player', icon: PlayCircle },
         { name: 'Recording Studio', path: '/studio', icon: Radio },
         { name: 'My Courses', path: '/courses', icon: BookOpen },
         { name: 'Languages', path: '/languages', icon: Globe },
