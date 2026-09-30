@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, Pause, Square, UndoDot, RotateCcw, Upload, FileJson, Video as VideoIcon, FileAudio, Maximize, X, Files, Search, GitBranch, PlaySquare, Settings, ChevronRight, ChevronDown, FilePlus, FolderPlus } from 'lucide-react';
 import Draggable from 'react-draggable';
@@ -122,7 +122,7 @@ export default function TimelineCodePlayer() {
   const [timelineData, setTimelineData] = useState([]);
   const [mediaUrl, setMediaUrl] = useState(null);
   const [mediaType, setMediaType] = useState('video'); // 'video' or 'audio'
-  const [readOnlyMode, setReadOnlyMode] = useState(false);
+  const [readOnlyMode] = useState(false);
   
   // Local Upload State
   const [mediaFileName, setMediaFileName] = useState('');
@@ -289,7 +289,7 @@ export default function TimelineCodePlayer() {
           } else {
             alert("Invalid JSON format. Expected array of objects with 'time' and 'code'.");
           }
-        } catch (err) {
+        } catch {
           alert("Failed to parse JSON file.");
         }
       };

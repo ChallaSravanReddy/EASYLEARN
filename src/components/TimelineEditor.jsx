@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, Pause, Save, Upload, Video as VideoIcon, CheckCircle2, ChevronLeft, Mic, StopCircle, Download, FileJson, Files, Search, GitBranch, PlaySquare, Settings, ChevronRight, ChevronDown, FilePlus, FolderPlus, X, FileAudio } from 'lucide-react';
 import Draggable from 'react-draggable';
@@ -9,7 +9,6 @@ const INITIAL_FILES = [
 ];
 
 export default function TimelineEditor() {
-  const [courseTitle, setCourseTitle] = useState('My Masterclass');
   const [lessonTitle, setLessonTitle] = useState('Introduction to Variables');
   
   // Recording State
@@ -20,7 +19,6 @@ export default function TimelineEditor() {
   
   // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackTime, setPlaybackTime] = useState(0);
   const [showVideo, setShowVideo] = useState(true);
 
   // VS Code State
@@ -221,18 +219,9 @@ export default function TimelineEditor() {
   };
 
   // ─── PLAYBACK & EXPORT LOGIC ────────────────────────────────────────────────
-
-  const togglePlayback = () => {
-    if (!playbackVideoRef.current) return;
-    if (isPlaying) playbackVideoRef.current.pause();
-    else playbackVideoRef.current.play();
-    setIsPlaying(!isPlaying);
-  };
-
   const handlePlaybackTimeUpdate = () => {
     if (!playbackVideoRef.current) return;
     const time = playbackVideoRef.current.currentTime;
-    setPlaybackTime(time);
 
     // Sync file state to playback time
     const snapshot = [...timelineData].reverse().find(s => s.time <= time);

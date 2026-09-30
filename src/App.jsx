@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 // Layout Components
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 // Pages
@@ -40,6 +41,7 @@ function Layout() {
       {!hideLayout && <Sidebar />}
       {/* Explicit margin-left is required because Sidebar is fixed */}
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'main-content-shifted' : ''}`}>
+        {!hideLayout && <Navbar />}
         <main className={`flex-1 w-full overflow-x-hidden p-6 md:p-10 pb-8`}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
