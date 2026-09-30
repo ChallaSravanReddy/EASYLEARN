@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'; // New import
+import { getStorage } from 'firebase/storage'; // Added for Media Uploads
 
 const firebaseConfig = {
   apiKey: "AIzaSyA7_Z8gsiLH5I4y_g8aQdEK1LQ9K3wxT7k",
@@ -18,3 +19,4 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app); // Export the Firestore instance
+export const storage = getStorage(app); // Export the Storage instance
