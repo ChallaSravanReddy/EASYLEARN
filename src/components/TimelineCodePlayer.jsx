@@ -508,37 +508,6 @@ export default function TimelineCodePlayer() {
   return (
     <div className="fixed inset-0 z-[100] bg-[#1e1e1e] w-screen h-screen overflow-hidden flex flex-col font-sans text-[#cccccc]">
       
-      {/* VS Code Top Bar */}
-      <div className="h-8 bg-[#323233] border-b border-[#252526] flex items-center justify-between px-3 select-none shrink-0 z-50">
-        <div className="flex items-center gap-4 text-[13px]">
-          <div className="flex items-center gap-1.5 mr-2">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-            <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
-          </div>
-          <span className="cursor-pointer hover:text-white">File</span>
-          <span className="cursor-pointer hover:text-white">Edit</span>
-          <span className="cursor-pointer hover:text-white">Selection</span>
-          <span className="cursor-pointer hover:text-white">View</span>
-          <span className="cursor-pointer hover:text-white">Go</span>
-          <span className="cursor-pointer hover:text-white">Run</span>
-          <span className="cursor-pointer hover:text-white">...</span>
-        </div>
-        <div className="flex items-center bg-[#1e1e1e] border border-[#3c3c3c] rounded px-4 py-0.5 text-xs w-[400px] justify-center text-slate-400 font-medium">
-          EASYLEARN ENGINE PRO - {files.find(f => f.id === activeTab)?.name || 'Welcome'}
-        </div>
-        <div className="flex items-center gap-4">
-          {isUserEditing && (
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded animate-pulse">
-              EDITING
-            </span>
-          )}
-          <button onClick={() => setShowVideo(!showVideo)} className="text-[12px] text-slate-400 hover:text-white flex items-center gap-1">
-             {mediaType === 'video' ? <VideoIcon className="w-3.5 h-3.5" /> : <FileAudio className="w-3.5 h-3.5" />} Toggle Media
-          </button>
-        </div>
-      </div>
-
       {/* Main Layout Area */}
       <div className="flex-1 flex overflow-hidden">
         
@@ -739,6 +708,15 @@ export default function TimelineCodePlayer() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007acc]/10 hover:bg-[#007acc]/20 text-[#007acc] border border-[#007acc]/30 rounded text-[11px] font-bold transition-colors uppercase tracking-wider"
             >
               <UndoDot className="w-3.5 h-3.5" /> Sync
+            </button>
+          )}
+          {mediaUrl && (
+            <button
+              onClick={() => setShowVideo(!showVideo)}
+              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-[#333]"
+              title="Toggle Media"
+            >
+              {mediaType === 'video' ? <VideoIcon className="w-4 h-4" /> : <FileAudio className="w-4 h-4" />}
             </button>
           )}
           <button className="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-[#333]" onClick={() => document.documentElement.requestFullscreen().catch(()=>{})}>
