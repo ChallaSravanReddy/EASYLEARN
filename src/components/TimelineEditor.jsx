@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Pause, Save, Upload, Video as VideoIcon, CheckCircle2, ChevronLeft, Mic, StopCircle, Download, FileJson, Files, Search, GitBranch, PlaySquare, Settings, ChevronRight, ChevronDown, FilePlus, FolderPlus, X, FileAudio } from 'lucide-react';
+import { Play, Pause, Save, Upload, Video as VideoIcon, CheckCircle2, ChevronLeft, Mic, StopCircle, Download, FileJson, PlaySquare, ChevronRight, ChevronDown, FilePlus, FolderPlus, X, FileAudio } from 'lucide-react';
 import Draggable from 'react-draggable';
 
 const INITIAL_FILES = [
@@ -314,16 +314,6 @@ export default function TimelineEditor() {
       {/* Main Layout Area */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* VS Code Activity Bar */}
-        <div className="w-12 bg-[#333333] flex flex-col items-center py-3 gap-6 shrink-0 border-r border-[#252526]">
-          <Files className="w-6 h-6 text-white cursor-pointer" />
-          <Search className="w-6 h-6 text-slate-500 hover:text-white cursor-pointer" />
-          <GitBranch className="w-6 h-6 text-slate-500 hover:text-white cursor-pointer" />
-          <div className="mt-auto mb-2">
-            <Settings className="w-6 h-6 text-slate-500 hover:text-white cursor-pointer" />
-          </div>
-        </div>
-
         {/* VS Code Side Bar (Explorer) */}
         <div className="w-60 bg-[#252526] flex flex-col shrink-0 border-r border-[#1e1e1e] select-none" onClick={() => setSelectedFolderId(null)}>
           <div className="h-9 px-4 flex items-center text-[11px] uppercase tracking-wider font-semibold text-slate-300">
