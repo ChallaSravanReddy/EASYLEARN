@@ -510,8 +510,8 @@ function TimelineCodePlayer() {
             </div>
         </Draggable>
       </div>
-    </div>  {/* close outer relative container */}
-    );
+    </div>
+  );
 }
 
 export default TimelineCodePlayer;
