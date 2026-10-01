@@ -29,6 +29,7 @@ import {
   ExternalLink,
   Cpu,
   MousePointer,
+  MousePointer2,
   HelpCircle,
   Trophy,
   Zap,
@@ -622,16 +623,8 @@ export default function ScrimPlayerView() {
                   transition: 'transform 80ms cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s ease',
                 }}
               >
-                {/* Simulated Instructor Cursor SVG */}
-                <svg
-                  className="w-5 h-5 -rotate-45 drop-shadow-md text-indigo-400"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  stroke="white"
-                  strokeWidth="1.5"
-                >
-                  <path d="M3 3l7 18 3-7 7-3L3 3z" />
-                </svg>
+                {/* Simulated Instructor Cursor */}
+                <MousePointer2 className="w-5 h-5 -rotate-45 drop-shadow-md text-indigo-400 fill-indigo-400" />
 
                 {/* Instructor Tag Pill */}
                 <div className="absolute left-4 top-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-600/90 text-white text-[10px] font-bold tracking-wider shadow-lg border border-indigo-400/40 whitespace-nowrap">
@@ -701,9 +694,10 @@ export default function ScrimPlayerView() {
                         <span className="text-[11px] text-slate-400">Target File:</span>
                         <button
                           onClick={() => selectFile(activeChallenge.targetFile!)}
-                          className="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-mono text-[11px] font-bold cursor-pointer"
+                          className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-mono text-[11px] font-bold cursor-pointer"
                         >
-                          📄 {activeChallenge.targetFile}
+                          <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>{activeChallenge.targetFile}</span>
                         </button>
                       </div>
                     )}
@@ -717,7 +711,7 @@ export default function ScrimPlayerView() {
                         className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                       >
                         <Lightbulb className="w-3.5 h-3.5" />
-                        <span>{showHint ? 'Hide Hint' : '💡 Need a hint?'}</span>
+                        <span>{showHint ? 'Hide Hint' : 'Need a hint?'}</span>
                       </button>
                       {showHint && (
                         <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs font-mono animate-in fade-in duration-150">
@@ -743,8 +737,9 @@ export default function ScrimPlayerView() {
                           <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                         )}
                         <div className="flex-1 space-y-1">
-                          <p className="font-bold text-sm">
-                            {testResult.passed ? '🎉 Awesome job! Challenge Passed!' : 'Challenge tests not passing yet'}
+                          <p className="font-bold text-sm flex items-center gap-1.5">
+                            {testResult.passed && <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            <span>{testResult.passed ? 'Awesome job! Challenge Passed!' : 'Challenge tests not passing yet'}</span>
                           </p>
                           <p className="text-xs opacity-90">
                             {testResult.error || testResult.message}
@@ -886,10 +881,14 @@ export default function ScrimPlayerView() {
                     e.stopPropagation();
                     seekTo(ch.timestamp);
                   }}
-                  title={`⚡ Challenge #${idx + 1}: ${ch.instructions} (${isCompleted ? 'Solved' : 'Pending'})`}
+                  title={`Challenge #${idx + 1}: ${ch.instructions} (${isCompleted ? 'Solved' : 'Pending'})`}
                 >
-                  <span className="-rotate-45 text-[8px] font-black text-white leading-none">
-                    {isCompleted ? '✓' : '⚡'}
+                  <span className="-rotate-45 flex items-center justify-center">
+                    {isCompleted ? (
+                      <Check className="w-2 h-2 text-white stroke-[3]" />
+                    ) : (
+                      <Zap className="w-2 h-2 text-amber-100 fill-amber-100" />
+                    )}
                   </span>
                 </div>
               );

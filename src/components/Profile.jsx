@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Star, Award, Settings, LogOut, CheckCircle2 } from "lucide-react";
+import { MapPin, Star, Award, Settings, LogOut, CheckCircle2, Trophy, BookOpen, Flame, Zap } from "lucide-react";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -16,7 +16,12 @@ const Profile = () => {
       { title: "Python Chatbots", progress: 40, color: "bg-emerald-500" },
       { title: "UI/UX Design", progress: 20, color: "bg-violet-500" },
     ],
-    badges: ["🏅 Top Learner", "📚 Consistent Coder", "🔥 20-Day Streak", "💡 Quick Thinker"],
+    badges: [
+      { label: "Top Learner", icon: Trophy, color: "text-amber-500" },
+      { label: "Consistent Coder", icon: BookOpen, color: "text-blue-500" },
+      { label: "20-Day Streak", icon: Flame, color: "text-orange-500" },
+      { label: "Quick Thinker", icon: Zap, color: "text-yellow-500" },
+    ],
     assignments: {
       attempted: 15,
       completed: 12,
@@ -90,11 +95,18 @@ const Profile = () => {
               <Award className="w-5 h-5 text-indigo-500" /> Badges
             </h3>
             <div className="flex flex-wrap gap-3">
-              {user.badges.map((badge, index) => (
-                <span key={index} className="px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-default">
-                  {badge}
-                </span>
-              ))}
+              {user.badges.map((badge, index) => {
+                const Icon = badge.icon;
+                return (
+                  <span
+                    key={index}
+                    className="flex items-center gap-2 px-3.5 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-default"
+                  >
+                    <Icon className={`w-4 h-4 ${badge.color}`} />
+                    <span>{badge.label}</span>
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>

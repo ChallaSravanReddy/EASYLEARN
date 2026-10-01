@@ -6,7 +6,7 @@ import FullStackImage from "../assets/Full_Stack.png";
 const STATS = [
   { label: "Courses", value: "50+", icon: BookOpen },
   { label: "Learners", value: "1.2M+", icon: Users },
-  { label: "Rating", value: "4.9 ★", icon: Star },
+  { label: "Rating", value: "4.9", icon: Star },
 ];
 
 export default function HeroSection() {

@@ -27,10 +27,13 @@ import "./App.css";
 function Layout() {
   const location = useLocation();
 
-  // Hide Sidebar & Footer on login, register, timeline player/editor pages
+  // Hide Sidebar & Footer on login, register, timeline player/editor pages, and full-screen studio/player
   const hideLayout =
     location.pathname === "/login" ||
     location.pathname === "/register" ||
+    location.pathname === "/player" ||
+    location.pathname === "/scrim-player" ||
+    location.pathname === "/studio" ||
     location.pathname.startsWith("/lesson/") ||
     location.pathname.startsWith("/instructor/lesson/new") ||
     location.pathname === "/course/javascript/introduction";
@@ -44,7 +47,7 @@ function Layout() {
       {/* Explicit margin-left is required because Sidebar is fixed */}
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'main-content-shifted' : ''}`}>
         {!hideLayout && <Navbar />}
-        <main className={`flex-1 w-full overflow-x-hidden p-6 md:p-10 pb-8`}>
+        <main className={`flex-1 w-full overflow-x-hidden ${hideLayout ? 'p-0 h-screen overflow-hidden' : 'p-6 md:p-10 pb-8'}`}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />

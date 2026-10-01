@@ -29,6 +29,7 @@ import {
   FileJson,
   Music,
   UploadCloud,
+  X,
 } from 'lucide-react';
 import { useScrimRecorder } from '../hooks/useScrimRecorder';
 import type { ScrimManifest, ScrimEvent } from '../types/scrim';
@@ -615,8 +616,8 @@ export default function RecordingStudio() {
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
             <span>{errorMessage}</span>
           </div>
-          <button onClick={() => setErrorMessage(null)} className="hover:text-white font-bold px-2 py-0.5">
-            ✕
+          <button onClick={() => setErrorMessage(null)} className="hover:text-white p-1 rounded-md hover:bg-red-900/50 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -881,9 +882,10 @@ export default function RecordingStudio() {
               </div>
               <button
                 onClick={() => setRecordingResult(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 text-sm font-bold"
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                title="Close"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
