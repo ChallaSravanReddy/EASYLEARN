@@ -281,6 +281,7 @@ export default function RecordingStudio() {
     audioBlob: Blob;
     scrimManifest: ScrimManifest;
     audioUrl: string;
+    audioDataUri?: string;
   } | null>(null);
 
   // Recent events buffer for the live HUD (capped at 50)
@@ -308,6 +309,7 @@ export default function RecordingStudio() {
     bindMonacoEditor,
     switchActiveFile,
     updateFiles,
+    recordPointerCoordinates,
   } = useScrimRecorder({
     files,
     activeFile,
@@ -325,7 +327,8 @@ export default function RecordingStudio() {
 
   const handleEditorMount = (editor: any) => {
     monacoEditorRef.current = editor;
-    bindMonacoEditor(editor, editorContainerRef.current);
+    const dom = editorContainerRef.current || (typeof editor.getDomNode === 'function' ? editor.getDomNode() : null);
+    bindMonacoEditor(editor, dom);
   };
 
   const handleEditorChange = (value: string | undefined) => {
@@ -391,9 +394,20 @@ export default function RecordingStudio() {
       setErrorMessage(null);
       const result = await stopRecording();
       const audioUrl = URL.createObjectURL(result.audioBlob);
+      let audioDataUri = '';
+      try {
+        audioDataUri = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string) || '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(result.audioBlob);
+        });
+      } catch (e) {}
+
       setRecordingResult({
         ...result,
         audioUrl,
+        audioDataUri: audioDataUri || audioUrl,
       });
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred while stopping recording.');
@@ -675,7 +689,12 @@ export default function RecordingStudio() {
           </div>
 
           {/* Monaco Editor Workspace */}
-          <div ref={editorContainerRef} className="flex-1 relative w-full h-full bg-[#1e1e1e]">
+          <div
+            ref={editorContainerRef}
+            onPointerMove={(e) => recordPointerCoordinates(e.clientX, e.clientY)}
+            onMouseMove={(e) => recordPointerCoordinates(e.clientX, e.clientY)}
+            className="flex-1 relative w-full h-full bg-[#1e1e1e]"
+          >
             <Editor
               height="100%"
               width="100%"
@@ -973,10 +992,12 @@ export default function RecordingStudio() {
                         'easy_scrim_custom',
                         JSON.stringify({
                           scrimManifest: recordingResult.scrimManifest,
-                          audioUrl: recordingResult.audioUrl,
+                          audioUrl: recordingResult.audioDataUri || recordingResult.audioUrl,
                         })
                       );
-                    } catch (e) {}
+                    } catch (e) {
+                      console.warn('Could not save to sessionStorage:', e);
+                    }
                     navigate('/player');
                   }}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"

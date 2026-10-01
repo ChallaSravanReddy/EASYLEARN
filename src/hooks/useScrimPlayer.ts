@@ -94,8 +94,12 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     if (element) {
       element.playbackRate = playbackSpeed;
       element.volume = isMuted ? 0 : volume;
+      if (audioUrl && element.src !== audioUrl) {
+        element.src = audioUrl;
+        element.load();
+      }
     }
-  }, [playbackSpeed, volume, isMuted]);
+  }, [playbackSpeed, volume, isMuted, audioUrl]);
 
   /**
    * Initialize or update manifest state
@@ -104,8 +108,18 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     setManifest(newManifest);
     manifestRef.current = newManifest;
 
-    if (newAudioUrl) {
-      setAudioUrl(newAudioUrl);
+    const targetAudioUrl = newAudioUrl || '';
+    if (targetAudioUrl) {
+      setAudioUrl(targetAudioUrl);
+      if (audioRef.current) {
+        if (audioRef.current.src !== targetAudioUrl) {
+          audioRef.current.src = targetAudioUrl;
+        }
+        audioRef.current.currentTime = 0;
+        audioRef.current.load();
+      }
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = 0;
     }
 
     const initFiles = JSON.parse(JSON.stringify(newManifest.initialState.files));
@@ -119,6 +133,7 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     setActiveFile(initActive);
     setDurationMs(newManifest.metadata.duration);
     setCurrentTimeMs(0);
+    setVirtualPointer(null);
     nextEventIndexRef.current = 0;
     setIsStudentModified(false);
     setIsForked(false);
@@ -130,11 +145,8 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
       isProgrammaticEditRef.current = false;
     }
 
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      if (!audioRef.current.paused) {
-        audioRef.current.pause();
-      }
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
     }
     setIsPlaying(false);
   }, []);
@@ -353,6 +365,27 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
       nextEventIndexRef.current = idx;
       setCurrentTimeMs(clampedTarget);
 
+      // Update virtual pointer position to the latest pointer telemetry event at or before target
+      let latestPointer: PointerEventTelemetry | null = null;
+      for (let pIdx = Math.min(idx - 1, events.length - 1); pIdx >= 0; pIdx--) {
+        if (events[pIdx] && events[pIdx].t <= clampedTarget && events[pIdx].type === 'pointer') {
+          latestPointer = events[pIdx] as PointerEventTelemetry;
+          break;
+        }
+      }
+      if (latestPointer) {
+        setVirtualPointer({
+          x: latestPointer.x,
+          y: latestPointer.y,
+          relX: latestPointer.relX,
+          relY: latestPointer.relY,
+          visible: clampedTarget - latestPointer.t <= 2500,
+          lastUpdated: performance.now(),
+        });
+      } else {
+        setVirtualPointer(null);
+      }
+
       // Reset student modified flag on seek & snapshot new baseline
       setIsStudentModified(false);
       setShowBranchModal(false);
@@ -395,6 +428,15 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
       const audioTimeMs = audio.currentTime * 1000;
       setCurrentTimeMs(audioTimeMs);
 
+      // Boundary check: enforce stopping exactly at manifest duration
+      if (curManifest.metadata.duration > 0 && audioTimeMs >= curManifest.metadata.duration) {
+        audio.pause();
+        audio.currentTime = curManifest.metadata.duration / 1000;
+        setCurrentTimeMs(curManifest.metadata.duration);
+        setIsPlaying(false);
+        return;
+      }
+
       // 2. Dispatch events up to audioTimeMs using linear index pointer
       const events = curManifest.events;
       let idx = nextEventIndexRef.current;
@@ -412,9 +454,9 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
       }
       nextEventIndexRef.current = idx;
 
-      // Fade out virtual pointer if idle for more than 1200ms
+      // Fade out virtual pointer if idle for more than 1500ms
       setVirtualPointer((prev) => {
-        if (prev && prev.visible && performance.now() - prev.lastUpdated > 1200) {
+        if (prev && prev.visible && performance.now() - prev.lastUpdated > 1500) {
           return { ...prev, visible: false };
         }
         return prev;

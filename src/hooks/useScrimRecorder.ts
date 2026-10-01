@@ -214,10 +214,76 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
   }, []);
 
   /**
+   * Helper to throttle and emit a pointer telemetry event based on client coordinates over the editor
+   */
+  const recordPointerCoordinates = useCallback(
+    (clientX: number, clientY: number) => {
+      if (statusRef.current !== 'recording') return;
+
+      const now = performance.now();
+      if (now - lastPointerTimeRef.current < pointerThrottleMs) {
+        return;
+      }
+
+      const targetDom = editorContainerRef.current;
+      if (!targetDom) return;
+
+      const rect = targetDom.getBoundingClientRect();
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) {
+        return;
+      }
+
+      lastPointerTimeRef.current = now;
+
+      const x = Math.round(clientX - rect.left);
+      const y = Math.round(clientY - rect.top);
+      const relX = rect.width > 0 ? Number(((clientX - rect.left) / rect.width).toFixed(4)) : 0;
+      const relY = rect.height > 0 ? Number(((clientY - rect.top) / rect.height).toFixed(4)) : 0;
+
+      const item: PointerEventTelemetry = {
+        t: getRelativeTime(),
+        type: 'pointer',
+        x,
+        y,
+        relX: Math.max(0, Math.min(1, relX)),
+        relY: Math.max(0, Math.min(1, relY)),
+        fileId: activeFileRef.current,
+      };
+      recordEvent(item);
+    },
+    [getRelativeTime, pointerThrottleMs, recordEvent]
+  );
+
+  /**
+   * Active window listener while recording: captures pointer movements even if
+   * Monaco internal widgets consume or stop propagation of bubbling events
+   */
+  useEffect(() => {
+    if (status !== 'recording') return;
+
+    const handleWindowPointer = (e: MouseEvent | PointerEvent) => {
+      recordPointerCoordinates(e.clientX, e.clientY);
+    };
+
+    window.addEventListener('pointermove', handleWindowPointer, true);
+    window.addEventListener('mousemove', handleWindowPointer, true);
+
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointer, true);
+      window.removeEventListener('mousemove', handleWindowPointer, true);
+    };
+  }, [status, recordPointerCoordinates]);
+
+  /**
    * Binds Monaco editor events to live telemetry collection
    */
   const bindMonacoEditor = useCallback(
-    (editor: MonacoEditorInstance, containerElement?: HTMLElement | null) => {
+    (editor: MonacoEditorInstance | any, containerElement?: HTMLElement | null) => {
       // Clean up previous listeners
       monacoDisposablesRef.current.forEach((d) => d.dispose());
       monacoDisposablesRef.current = [];
@@ -228,10 +294,13 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
 
       if (!editor) return;
 
-      editorContainerRef.current = containerElement || editor.getDomNode();
+      const resolvedContainer =
+        containerElement ||
+        (typeof editor.getDomNode === 'function' ? editor.getDomNode() : null);
+      editorContainerRef.current = resolvedContainer;
 
       // 1. Text content deltas
-      const contentDisposable = editor.onDidChangeModelContent((event) => {
+      const contentDisposable = editor.onDidChangeModelContent((event: any) => {
         if (statusRef.current !== 'recording') return;
         const t = getRelativeTime();
 
@@ -256,7 +325,7 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
       monacoDisposablesRef.current.push(contentDisposable);
 
       // 2. Cursor position changes
-      const cursorDisposable = editor.onDidChangeCursorPosition((event) => {
+      const cursorDisposable = editor.onDidChangeCursorPosition((event: any) => {
         if (statusRef.current !== 'recording') return;
         const t = getRelativeTime();
 
@@ -274,7 +343,7 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
       monacoDisposablesRef.current.push(cursorDisposable);
 
       // 3. Selection changes
-      const selectionDisposable = editor.onDidChangeCursorSelection((event) => {
+      const selectionDisposable = editor.onDidChangeCursorSelection((event: any) => {
         if (statusRef.current !== 'recording') return;
         const sel = event.selection;
         if (sel.isEmpty()) return; // Cursor position event covers non-selected movement
@@ -295,43 +364,35 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
       });
       monacoDisposablesRef.current.push(selectionDisposable);
 
-      // 4. Pointer coordinates over editor container (throttled to max 1 event every 40ms)
-      const targetDom = editorContainerRef.current;
-      if (targetDom) {
-        const handlePointerMove = (e: MouseEvent | PointerEvent) => {
+      // 4. Hook directly into Monaco Editor's native onMouseMove API
+      if (typeof editor.onMouseMove === 'function') {
+        const monacoMouseDisposable = editor.onMouseMove((e: any) => {
           if (statusRef.current !== 'recording') return;
-
-          const now = performance.now();
-          if (now - lastPointerTimeRef.current < pointerThrottleMs) {
-            return;
+          const clientX = e.event?.posx ?? e.event?.browserEvent?.clientX;
+          const clientY = e.event?.posy ?? e.event?.browserEvent?.clientY;
+          if (clientX !== undefined && clientY !== undefined) {
+            recordPointerCoordinates(clientX, clientY);
           }
-          lastPointerTimeRef.current = now;
+        });
+        monacoDisposablesRef.current.push(monacoMouseDisposable);
+      }
 
-          const rect = targetDom.getBoundingClientRect();
-          const x = Math.round(e.clientX - rect.left);
-          const y = Math.round(e.clientY - rect.top);
-          const relX = rect.width > 0 ? Number(((e.clientX - rect.left) / rect.width).toFixed(4)) : 0;
-          const relY = rect.height > 0 ? Number(((e.clientY - rect.top) / rect.height).toFixed(4)) : 0;
-
-          const item: PointerEventTelemetry = {
-            t: getRelativeTime(),
-            type: 'pointer',
-            x,
-            y,
-            relX: Math.max(0, Math.min(1, relX)),
-            relY: Math.max(0, Math.min(1, relY)),
-            fileId: activeFileRef.current,
-          };
-          recordEvent(item);
+      // 5. Container capture-phase pointer and mouse listeners
+      if (resolvedContainer) {
+        const handleContainerPointer = (e: MouseEvent | PointerEvent) => {
+          recordPointerCoordinates(e.clientX, e.clientY);
         };
 
-        targetDom.addEventListener('pointermove', handlePointerMove, { passive: true });
+        resolvedContainer.addEventListener('pointermove', handleContainerPointer, true);
+        resolvedContainer.addEventListener('mousemove', handleContainerPointer, true);
+
         pointerCleanupRef.current = () => {
-          targetDom.removeEventListener('pointermove', handlePointerMove);
+          resolvedContainer.removeEventListener('pointermove', handleContainerPointer, true);
+          resolvedContainer.removeEventListener('mousemove', handleContainerPointer, true);
         };
       }
     },
-    [getRelativeTime, pointerThrottleMs, recordEvent]
+    [getRelativeTime, recordEvent, recordPointerCoordinates]
   );
 
   /**
@@ -375,21 +436,31 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     setKeyframeCount(0);
     setElapsedTime(0);
 
-    // 1. Audio stream acquisition
+    // 1. Audio stream acquisition with noise suppression & echo cancellation
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000,
+        },
+      });
       mediaStreamRef.current = stream;
     } catch (err: any) {
       console.error('[useScrimRecorder] Microphone access denied or unavailable:', err);
       throw new Error(`Microphone access failed: ${err.message || 'Permission denied'}`);
     }
 
-    // 2. Select MIME type
+    // 2. Select MIME type & configure high-bitrate Opus recorder
     const mimeType = getSupportedAudioMimeType();
     resolvedMimeTypeRef.current = mimeType;
 
-    const recorderOptions: MediaRecorderOptions = {};
+    const recorderOptions: MediaRecorderOptions = {
+      audioBitsPerSecond: 128000,
+    };
     if (mimeType) {
       recorderOptions.mimeType = mimeType;
     }
@@ -449,6 +520,9 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     if (statusRef.current !== 'recording') return;
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch (e) {}
       mediaRecorderRef.current.pause();
     }
 
@@ -513,8 +587,9 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
           mediaStreamRef.current = null;
         }
 
-        const mime = resolvedMimeTypeRef.current || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
+        const mime = resolvedMimeTypeRef.current || recorder?.mimeType || 'audio/webm';
+        const validChunks = audioChunksRef.current.filter((c) => c && c.size > 0);
+        const audioBlob = new Blob(validChunks, { type: mime });
 
         const manifest: ScrimManifest = {
           version: '1.0.0',
@@ -548,6 +623,9 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
       if (recorder && recorder.state !== 'inactive') {
         recorder.onstop = finalize;
         try {
+          if (recorder.state === 'recording') {
+            recorder.requestData(); // Flush all pending chunks
+          }
           recorder.stop();
         } catch (e) {
           finalize();
@@ -589,5 +667,6 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     switchActiveFile,
     updateFiles,
     getRelativeTime,
+    recordPointerCoordinates,
   };
 }

@@ -55,6 +55,7 @@ export default function ScrimPlayerView() {
   // Active Scrim Manifest & Audio Source (defaults to rich Demo Scrim)
   const [manifest, setManifest] = useState<ScrimManifest>(DEMO_SCRIM_MANIFEST);
   const [syntheticAudioUrl, setSyntheticAudioUrl] = useState<string>('');
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string>('');
   const [showLivePreview, setShowLivePreview] = useState<boolean>(true);
   const [showManifestModal, setShowManifestModal] = useState<boolean>(false);
   const [jsonInput, setJsonInput] = useState<string>('');
@@ -63,6 +64,9 @@ export default function ScrimPlayerView() {
   const [newFileName, setNewFileName] = useState<string>('');
   const [showNewFileInput, setShowNewFileInput] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  // Active audio URL is the recorded voice stream if available, else synthetic tone
+  const activeAudioUrl = recordedAudioUrl || syntheticAudioUrl;
 
   // URL Query search params for cloud published scrims (/player?scrimId=xyz)
   const [searchParams] = useSearchParams();
@@ -108,7 +112,7 @@ export default function ScrimPlayerView() {
     cancelBranchModal,
   } = useScrimPlayer({
     manifest,
-    audioSrc: syntheticAudioUrl,
+    audioSrc: activeAudioUrl,
   });
 
   // Attach audio element reference to hook
@@ -116,7 +120,7 @@ export default function ScrimPlayerView() {
     if (audioElementRef.current) {
       bindAudio(audioElementRef.current);
     }
-  }, [bindAudio, syntheticAudioUrl]);
+  }, [bindAudio, activeAudioUrl]);
 
   // Check for custom scrim passed via sessionStorage from Recording Studio
   useEffect(() => {
@@ -125,8 +129,12 @@ export default function ScrimPlayerView() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.scrimManifest) {
+          const finalAudio = parsed.audioUrl || '';
           setManifest(parsed.scrimManifest);
-          loadManifest(parsed.scrimManifest, parsed.audioUrl || syntheticAudioUrl);
+          if (finalAudio) {
+            setRecordedAudioUrl(finalAudio);
+          }
+          loadManifest(parsed.scrimManifest, finalAudio || syntheticAudioUrl);
         }
       }
     } catch (err) {
@@ -142,6 +150,9 @@ export default function ScrimPlayerView() {
       .then((data) => {
         if (data) {
           setManifest(data.manifest);
+          if (data.record.audio_url) {
+            setRecordedAudioUrl(data.record.audio_url);
+          }
           loadManifest(data.manifest, data.record.audio_url);
         }
       })
@@ -212,9 +223,11 @@ export default function ScrimPlayerView() {
 
     if (editorContainerRef.current && virtualPointer.relX !== undefined && virtualPointer.relY !== undefined) {
       const rect = editorContainerRef.current.getBoundingClientRect();
-      const x = Math.max(10, Math.min(rect.width - 20, virtualPointer.relX * rect.width));
-      const y = Math.max(10, Math.min(rect.height - 20, virtualPointer.relY * rect.height));
-      return { x, y };
+      if (rect.width > 0 && rect.height > 0) {
+        const x = Math.max(0, Math.min(rect.width - 24, virtualPointer.relX * rect.width));
+        const y = Math.max(0, Math.min(rect.height - 24, virtualPointer.relY * rect.height));
+        return { x, y };
+      }
     }
 
     return { x: virtualPointer.x, y: virtualPointer.y };
@@ -238,8 +251,12 @@ export default function ScrimPlayerView() {
         return;
       }
       const finalManifest = parsed.scrimManifest || parsed;
+      const finalAudio = parsed.audioUrl || '';
+      if (finalAudio) {
+        setRecordedAudioUrl(finalAudio);
+      }
       setManifest(finalManifest);
-      loadManifest(finalManifest, parsed.audioUrl || syntheticAudioUrl);
+      loadManifest(finalManifest, finalAudio || syntheticAudioUrl);
       setShowManifestModal(false);
       setJsonInput('');
     } catch (err) {
@@ -256,8 +273,12 @@ export default function ScrimPlayerView() {
         const text = event.target?.result as string;
         const parsed = JSON.parse(text);
         const finalManifest = parsed.scrimManifest || parsed;
+        const finalAudio = parsed.audioUrl || '';
+        if (finalAudio) {
+          setRecordedAudioUrl(finalAudio);
+        }
         setManifest(finalManifest);
-        loadManifest(finalManifest, parsed.audioUrl || syntheticAudioUrl);
+        loadManifest(finalManifest, finalAudio || syntheticAudioUrl);
         setShowManifestModal(false);
       } catch (err) {
         alert('Failed to read Scrim file: ' + (err as Error).message);
@@ -271,7 +292,7 @@ export default function ScrimPlayerView() {
       {/* ── Hidden HTML5 Audio Element (Driven by Audio Master Clock) ── */}
       <audio
         ref={audioElementRef}
-        src={syntheticAudioUrl}
+        src={activeAudioUrl}
         preload="auto"
         onEnded={() => pause()}
         className="hidden"
