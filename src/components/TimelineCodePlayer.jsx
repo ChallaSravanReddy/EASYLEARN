@@ -1,10 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Pause, Square, UndoDot, RotateCcw, Upload, FileJson, Video as VideoIcon, FileAudio, Maximize, X, GitBranch, ChevronRight, ChevronDown, FilePlus, FolderPlus } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Square,
+  UndoDot,
+  RotateCcw,
+  Upload,
+  FileJson,
+  Video as VideoIcon,
+  FileAudio,
+  Maximize,
+  X,
+  GitBranch,
+  ChevronRight,
+  ChevronDown,
+  FilePlus,
+  FolderPlus,
+  Sparkles,
+  PanelLeft,
+  ArrowLeft,
+  Columns,
+  Columns2,
+  Eye,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 import Draggable from 'react-draggable';
 import OutputPanel from './OutputPanel';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ScrimbaFileIcon from './ScrimbaFileIcon';
 
 const DEMO_TIMELINE = [
   { time: 0, code: `// Welcome to JavaScript Basics!\n// Click Play to start the interactive lesson.` },
@@ -147,6 +175,47 @@ export default function TimelineCodePlayer() {
 
   const activeLanguage = files.find(f => f.id === activeTab)?.language || 'javascript';
 
+  // Scrimba UI Layout state
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showCaptions, setShowCaptions] = useState(true);
+  const [showExplainModal, setShowExplainModal] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  // Scrimba Deep Dark Monaco Theme
+  const handleEditorWillMount = (monaco) => {
+    monaco.editor.defineTheme('scrimba-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'f43f5e', fontStyle: 'bold' },
+        { token: 'string', foreground: '38bdf8' },
+        { token: 'number', foreground: 'a78bfa' },
+        { token: 'type', foreground: '34d399' },
+        { token: 'function', foreground: 'fbbf24' },
+      ],
+      colors: {
+        'editor.background': '#0c0e15',
+        'editor.foreground': '#f8fafc',
+        'editorLineNumber.foreground': '#334155',
+        'editorLineNumber.activeForeground': '#94a3b8',
+        'editor.lineHighlightBackground': '#141824',
+        'editorCursor.foreground': '#38bdf8',
+        'editor.selectionBackground': '#1d4ed855',
+      },
+    });
+  };
+
   const handleUserActivity = () => {
     if (!isUserEditing) {
       setIsUserEditing(true);
@@ -214,11 +283,16 @@ export default function TimelineCodePlayer() {
                    setSelectedFolderId(f.parentId);
                  }
               }}
-              className={`flex items-center gap-1.5 py-1 cursor-pointer text-[13px] ${activeTab === f.id || selectedFolderId === f.id ? 'bg-[#37373d] text-white' : 'text-[#cccccc] hover:bg-[#2a2d2e]'}`}
-              style={{ paddingLeft: `${depth * 12 + 24}px` }}
+              className={`flex items-center gap-2 py-1.5 px-3 rounded-lg cursor-pointer text-xs font-mono transition-colors ${activeTab === f.id || selectedFolderId === f.id ? 'bg-[#181c2b] text-white font-medium border border-slate-700/60' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'}`}
+              style={{ paddingLeft: `${depth * 12 + 16}px` }}
             >
-              {f.isFolder ? <ChevronRight className={`w-4 h-4 transition-transform ${f.isOpen ? 'rotate-90' : ''}`} /> : <div className="w-4 h-4 ml-1" />}
-              <span className={f.isFolder ? 'font-semibold text-slate-200' : ''}>{f.name}</span>
+              {f.isFolder ? (
+                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${f.isOpen ? 'rotate-90 text-slate-300' : 'text-slate-500'}`} />
+              ) : (
+                <ScrimbaFileIcon fileName={f.name} className="w-3.5 h-3.5" />
+              )}
+              <span className={`truncate ${f.isFolder ? 'font-semibold text-slate-200' : ''}`}>{f.name}</span>
+              {activeTab === f.id && !f.isFolder && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-auto" />}
             </div>
             {f.isFolder && f.isOpen && renderTree(f.id, depth + 1)}
           </React.Fragment>
@@ -503,41 +577,110 @@ export default function TimelineCodePlayer() {
     );
   }
 
-  // ─── Engine Full Screen Render ─────────────────────────────────────────────
+  // ─── Scrimba Engine Full Screen Render ─────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#1e1e1e] w-screen h-screen overflow-hidden flex flex-col font-sans text-[#cccccc]">
+    <div className="fixed inset-0 z-[100] bg-[#0c0d14] w-screen h-screen overflow-hidden flex flex-col font-sans text-slate-100 select-none">
       
-      {/* Main Layout Area */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* VS Code Side Bar (Explorer) */}
-        <div className="w-60 bg-[#252526] flex flex-col shrink-0 border-r border-[#1e1e1e] select-none" onClick={() => setSelectedFolderId(null)}>
-          <div className="h-9 px-4 flex items-center text-[11px] uppercase tracking-wider font-semibold text-slate-300">
-            Explorer
+      {/* ── Scrimba Top Navigation Bar ── */}
+      <header className="h-10 bg-[#12141f] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none z-20">
+        {/* Left: Back, Logo //, Title breadcrumb, Time capsule */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
+            //
           </div>
-          <div className="px-2 py-1 flex items-center justify-between group cursor-pointer hover:bg-[#2a2d2e]" onClick={(e) => { e.stopPropagation(); setSelectedFolderId(null); }}>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-white uppercase tracking-wider">
-              <ChevronDown className="w-4 h-4" /> EASYLEARN
-            </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <FilePlus className="w-4 h-4 text-slate-300 hover:text-white" onClick={addFile} title="New File" />
-              <FolderPlus className="w-4 h-4 text-slate-300 hover:text-white" onClick={addFolder} title="New Folder" />
-            </div>
-          </div>
-          <div className="flex flex-col mt-1 overflow-y-auto no-scrollbar pb-10">
-            {renderTree(null)}
+          <div className="flex items-center gap-2">
+            <span className="text-white text-xs font-semibold tracking-tight truncate max-w-[180px] sm:max-w-xs">
+              GitHub JavaScript Launchpad
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
           </div>
         </div>
 
-        {/* VS Code Main Editor Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] relative">
+        {/* Right: EXPLAIN button, sidebar toggle, Fullscreen */}
+        <div className="flex items-center gap-2">
+          {/* AI Explain Button */}
+          <button
+            onClick={() => setShowExplainModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-950/70 hover:bg-blue-900/80 text-blue-400 border border-blue-500/40 text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm shadow-blue-500/10 hover:scale-105 active:scale-95 cursor-pointer"
+            title="Ask AI to explain current code line-by-line"
+          >
+            <Sparkles className="w-3 h-3 text-blue-400" />
+            <span>EXPLAIN</span>
+          </button>
+
+          {/* Files Sidebar Toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+              sidebarOpen ? 'text-slate-200 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={sidebarOpen ? 'Hide Files sidebar' : 'Show Files sidebar'}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+
+          {/* Toggle Media PiP */}
+          {mediaUrl && (
+            <button
+              onClick={() => setShowVideo(!showVideo)}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                showVideo ? 'text-blue-400 bg-blue-950/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Toggle Picture-in-Picture Video"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Layout Area */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative bg-[#0c0d14]">
+        
+        {/* Scrimba Left FILES Sidebar */}
+        {sidebarOpen && (
+          <div className="w-52 bg-[#0d0f17] flex flex-col shrink-0 border-r border-slate-800/80 select-none" onClick={() => setSelectedFolderId(null)}>
+            <div className="h-8 px-3 flex items-center justify-between border-b border-slate-800/60 text-slate-400 text-[10px] font-bold tracking-wider uppercase">
+              <span>FILES</span>
+              <div className="flex items-center gap-1">
+                <FilePlus className="w-3.5 h-3.5 text-slate-400 hover:text-white cursor-pointer" onClick={addFile} title="New File" />
+                <FolderPlus className="w-3.5 h-3.5 text-slate-400 hover:text-white cursor-pointer" onClick={addFolder} title="New Folder" />
+              </div>
+            </div>
+            <div className="flex flex-col p-1.5 overflow-y-auto space-y-0.5">
+              {renderTree(null)}
+            </div>
+          </div>
+        )}
+
+        {/* Main Editor Area */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
           
-          {/* Editor Tabs */}
-          <div className="h-9 flex bg-[#252526] overflow-x-auto no-scrollbar border-b border-[#1e1e1e]">
+          {/* File Tab Bar */}
+          <div className="h-8 flex items-center bg-[#0e1017] overflow-x-auto no-scrollbar border-b border-slate-800/80 px-2 gap-1 shrink-0">
             {openTabs.map(tabId => {
               const f = files.find(x => x.id === tabId);
               if (!f) return null;
+              const isActive = activeTab === tabId;
               return (
                 <div 
                   key={tabId}
@@ -545,192 +688,262 @@ export default function TimelineCodePlayer() {
                     handleUserActivity();
                     setActiveTab(tabId);
                   }}
-                  className={`flex items-center px-4 min-w-[120px] max-w-[200px] border-t cursor-pointer gap-2 ${activeTab === tabId ? 'bg-[#1e1e1e] border-[#007acc] text-white' : 'bg-[#2d2d2d] border-transparent text-slate-400 hover:bg-[#2b2b2b]'}`}
+                  className={`flex items-center px-3 py-1 rounded-md cursor-pointer gap-2 text-xs font-mono transition-colors ${
+                    isActive
+                      ? 'bg-[#181c2b] text-white font-medium border border-slate-700/60 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
                 >
-                  <span className={`text-[12px] font-mono ${f.language === 'javascript' ? 'text-yellow-400' : f.language === 'css' ? 'text-blue-400' : 'text-slate-300'}`}>
-                    {f.language === 'javascript' ? 'JS' : f.language === 'css' ? '#' : '{}'}
-                  </span> 
-                  <span className="truncate">{f.name}</span>
-                  <X className="w-3.5 h-3.5 ml-auto hover:bg-[#444] rounded-md shrink-0" onClick={(e) => closeTab(e, tabId)} />
+                  <ScrimbaFileIcon fileName={f.name} className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[120px]">{f.name}</span>
+                  {isActive && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  <X className="w-3 h-3 ml-1 text-slate-500 hover:text-white rounded" onClick={(e) => closeTab(e, tabId)} />
                 </div>
               );
             })}
           </div>
 
-          {/* Breadcrumbs */}
-          <div className="h-6 flex items-center px-4 text-[12px] text-slate-400 bg-[#1e1e1e] shadow-sm shadow-black/20 z-10">
-            EASYLEARN 
-            {getBreadcrumbs(activeTab).map(crumb => (
-              <React.Fragment key={crumb}>
-                <ChevronRight className="w-3.5 h-3.5 mx-1" /> {crumb}
-              </React.Fragment>
-            ))}
-          </div>
-
-          {/* Editor Container */}
-          <div className="flex-1 relative">
+          {/* Monaco Editor Container */}
+          <div className="flex-1 relative overflow-hidden" onClick={() => { if (isPlaying) togglePlayPause(); }}>
             <Editor
               height="100%"
               width="100%"
               language={activeLanguage}
-              theme="vs-dark"
+              theme="scrimba-dark"
+              beforeMount={handleEditorWillMount}
               value={activeTab === '1' ? currentCode : (files.find(f => f.id === activeTab)?.content || '')}
               options={{
-                fontSize: 15,
+                fontSize: 14,
                 fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                minimap: { enabled: true, scale: 0.75 },
-                padding: { top: 16, bottom: 16 },
+                minimap: { enabled: false },
+                padding: { top: 12 },
                 scrollBeyondLastLine: false,
                 smoothScrolling: true,
                 cursorBlinking: "smooth",
                 renderLineHighlight: "all",
+                tabSize: 2,
               }}
               onChange={(val) => handleEditorChange(val)}
             />
 
-        {/* Draggable Media Overlay (Picture-in-Picture style) */}
-        {showVideo && mediaUrl && (
-          <Draggable nodeRef={videoDragRef} bounds="parent" defaultPosition={{ x: window.innerWidth - 420, y: 24 }}>
-            <div ref={videoDragRef} className="absolute z-40 rounded-xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 bg-black cursor-move w-[380px] group backdrop-blur-md">
-              <div className="h-6 bg-gradient-to-r from-slate-900 to-black flex items-center justify-between px-3">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{mediaType}</span>
-                <X className="w-3 h-3 text-slate-400 hover:text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowVideo(false); }} />
-              </div>
-              {mediaType === 'video' ? (
-                <video
-                  ref={mediaRef}
-                  src={mediaUrl}
-                  className="w-full aspect-video object-cover pointer-events-none"
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={handleMediaEnded}
-                />
-              ) : (
-                <div className="w-full h-24 bg-slate-900 flex items-center justify-center flex-col">
-                  <FileAudio className="w-8 h-8 text-indigo-500 mb-2" />
-                  <audio
-                    ref={mediaRef}
-                    src={mediaUrl}
-                    className="hidden"
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onEnded={handleMediaEnded}
-                  />
-                  <span className="text-xs text-slate-400">Audio Playing</span>
+            {/* ── Large Semi-Transparent Center Blue Play Button ── */}
+            {!isPlaying && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlayPause();
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 transition-all hover:scale-110 active:scale-95 group focus:outline-none cursor-pointer p-4"
+                title="Play Lesson"
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500/80 hover:bg-blue-500 backdrop-blur-md flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.6)] border border-blue-400/50 transition-all">
+                  <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-white text-white translate-x-0.5" />
                 </div>
-              )}
-            </div>
-          </Draggable>
-        )}
+              </button>
+            )}
 
-        {/* Draggable Terminal Panel */}
-        <Draggable nodeRef={nodeRef} defaultPosition={{ x: window.innerWidth - 480, y: window.innerHeight - 380 }}>
-          <div ref={nodeRef} className="fixed top-0 left-0 z-[1000] w-[450px] shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-[#30363d] bg-[#0d1117] flex flex-col">
-            <div className="h-9 bg-[#161b22] flex items-center justify-between px-4 cursor-move border-b border-[#30363d]">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-                  <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+            {/* ── Synchronized Closed Captions Pill ── */}
+            {showCaptions && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none max-w-lg px-4 animate-in fade-in duration-150">
+                <div className="px-5 py-2 rounded-full bg-[#12141f]/95 border border-slate-700/60 shadow-2xl backdrop-blur-md text-slate-300 text-xs sm:text-sm font-medium tracking-wide flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <span>Interactive lesson code</span>
+                  <span className="text-white font-bold tracking-normal">synced with live timeline</span>
+                  <span>playback</span>
                 </div>
-                <span className="ml-2 text-[10px] font-bold text-slate-400 tracking-widest uppercase">bash — output</span>
               </div>
-            </div>
-            <div className="h-60 overflow-hidden">
-              <OutputPanel outputCode={generateOutputHTML(files, currentCode)} />
-            </div>
-          </div>
-        </Draggable>
+            )}
+
+            {/* Draggable Media Overlay (Picture-in-Picture style) */}
+            {showVideo && mediaUrl && (
+              <Draggable nodeRef={videoDragRef} bounds="parent" defaultPosition={{ x: window.innerWidth - 380, y: 20 }}>
+                <div ref={videoDragRef} className="absolute z-40 rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-slate-700/70 bg-[#12141f]/95 cursor-move w-[340px] group backdrop-blur-md">
+                  <div className="h-7 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between px-3 select-none text-[11px] text-slate-300">
+                    <span className="font-semibold text-slate-200">Instructor Feed</span>
+                    <X className="w-3.5 h-3.5 text-slate-400 hover:text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowVideo(false); }} />
+                  </div>
+                  {mediaType === 'video' ? (
+                    <video
+                      ref={mediaRef}
+                      src={mediaUrl}
+                      className="w-full aspect-video object-cover pointer-events-none"
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onEnded={handleMediaEnded}
+                    />
+                  ) : (
+                    <div className="w-full h-24 bg-slate-900 flex items-center justify-center flex-col">
+                      <FileAudio className="w-8 h-8 text-blue-500 mb-2" />
+                      <audio
+                        ref={mediaRef}
+                        src={mediaUrl}
+                        className="hidden"
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onEnded={handleMediaEnded}
+                      />
+                      <span className="text-xs text-slate-400">Audio Stream Active</span>
+                    </div>
+                  )}
+                </div>
+              </Draggable>
+            )}
+
+            {/* Floating Terminal Preview (Styled like Scrimba's Preview Ctrl+L) */}
+            <Draggable nodeRef={nodeRef} defaultPosition={{ x: window.innerWidth - 460, y: window.innerHeight - 340 }}>
+              <div ref={nodeRef} className="fixed top-0 left-0 z-[1000] w-[420px] shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-slate-700/70 bg-[#12141f]/95 backdrop-blur-md flex flex-col">
+                <div className="h-7 bg-slate-900/90 flex items-center justify-between px-3 cursor-move border-b border-slate-800 select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-200">Preview</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
+                      Ctrl+L
+                    </span>
+                  </div>
+                </div>
+                <div className="h-56 overflow-hidden bg-slate-950">
+                  <OutputPanel outputCode={generateOutputHTML(files, currentCode)} />
+                </div>
+              </div>
+            </Draggable>
           </div>
         </div>
       </div>
 
-      {/* Bottom Robust Control Bar */}
-      <div className="h-16 bg-[#252526] border-t border-[#1e1e1e] shrink-0 flex items-center px-6 gap-6 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.2)]">
+      {/* ── Bottom Scrimba Control Bar ── */}
+      <footer className="bg-[#12141f] border-t border-slate-800/80 px-4 py-2.5 flex flex-col gap-1.5 shrink-0 select-none z-20">
         
-        {/* Playback Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={togglePlayPause}
-            className="w-10 h-10 rounded-full bg-[#007acc] hover:bg-[#005999] text-white flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-[#007acc]/30"
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-1" />}
-          </button>
-          <button
-            onClick={stopPlayback}
-            className="w-8 h-8 rounded-full bg-[#333] hover:bg-[#444] text-slate-300 flex items-center justify-center transition-colors"
-          >
-            <Square className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* Timeline Slider */}
-        <div className="flex-1 flex items-center gap-4">
-          <span className="text-xs font-mono text-slate-400 w-10 text-right">{formatTime(currentTime)}</span>
-          <div className="relative flex-1 flex items-center group">
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="0.1"
-              value={currentTime}
-              onChange={handleSliderChange}
-              className="w-full h-1.5 rounded-full appearance-none bg-[#333] cursor-pointer outline-none relative z-10"
-              style={{
-                background: `linear-gradient(to right, #007acc ${(currentTime / (duration || 100)) * 100}%, #333 ${(currentTime / (duration || 100)) * 100}%)`
-              }}
+        {/* Scrimba Blue Progress Scrubber */}
+        <div className="relative flex items-center h-5 group">
+          <div className="absolute inset-x-0 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.7)] transition-all duration-75"
+              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
             />
-            {/* Custom slider thumb logic via injected styles */}
-            <style>{`
-              input[type=range]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; cursor: pointer; border: 2px solid #007acc; box-shadow: 0 0 10px rgba(0,122,204,0.5); transition: transform 0.1s; }
-              input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
-            `}</style>
           </div>
-          <span className="text-xs font-mono text-slate-400 w-10">{formatTime(duration)}</span>
+          <input
+            type="range"
+            min="0"
+            max={duration || 100}
+            step="0.1"
+            value={currentTime}
+            onChange={handleSliderChange}
+            className="absolute inset-x-0 w-full h-4 opacity-0 cursor-pointer z-20"
+          />
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-          {isUserEditing && (
+        {/* Player Transport Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={resumeTimelineCode}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007acc]/10 hover:bg-[#007acc]/20 text-[#007acc] border border-[#007acc]/30 rounded text-[11px] font-bold transition-colors uppercase tracking-wider"
+              onClick={togglePlayPause}
+              className="w-9 h-9 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-600/30 transition-all active:scale-95 cursor-pointer"
+              title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
             >
-              <UndoDot className="w-3.5 h-3.5" /> Sync
+              {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
             </button>
-          )}
-          {mediaUrl && (
             <button
-              onClick={() => setShowVideo(!showVideo)}
-              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-[#333]"
-              title="Toggle Media"
+              onClick={stopPlayback}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Stop"
             >
-              {mediaType === 'video' ? <VideoIcon className="w-4 h-4" /> : <FileAudio className="w-4 h-4" />}
+              <Square className="w-3.5 h-3.5" />
             </button>
-          )}
-          <button className="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-[#333]" onClick={() => document.documentElement.requestFullscreen().catch(()=>{})}>
-            <Maximize className="w-4 h-4" />
-          </button>
-        </div>
 
-      </div>
+            {/* Time Display */}
+            <div className="font-mono text-xs text-slate-300 tracking-wider">
+              <span className="font-bold text-white">{formatTime(currentTime)}</span>
+              <span className="text-slate-500 mx-1">/</span>
+              <span className="text-slate-400">{formatTime(duration)}</span>
+            </div>
+          </div>
 
-      {/* VS Code Status Bar */}
-      <div className="h-[22px] bg-[#007acc] text-white flex items-center justify-between px-3 text-[11px] shrink-0 select-none">
-        <div className="flex items-center gap-4">
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded flex items-center gap-1"><GitBranch className="w-3.5 h-3.5" /> main*</span>
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded flex items-center gap-1">
-            <RotateCcw className="w-3 h-3" /> 0 
-            <UndoDot className="w-3 h-3 ml-1" /> 0
-          </span>
+          {/* Subtitles (CC), Resync and Fullscreen */}
+          <div className="flex items-center gap-3">
+            {isUserEditing && (
+              <button
+                onClick={resumeTimelineCode}
+                className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                title="Restore instructor timeline code"
+              >
+                <UndoDot className="w-3.5 h-3.5" /> Re-sync
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowCaptions(!showCaptions)}
+              className={`px-2 py-0.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
+                showCaptions ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white bg-slate-800'
+              }`}
+              title={showCaptions ? 'Hide Subtitles' : 'Show Subtitles'}
+            >
+              CC
+            </button>
+
+            <button
+              onClick={toggleFullscreen}
+              className="p-1.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-slate-800 cursor-pointer"
+              title="Fullscreen"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded">Ln 1, Col 1</span>
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded">Spaces: 2</span>
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded">UTF-8</span>
-          <span className="cursor-pointer hover:bg-white/20 px-1 rounded uppercase">{activeLanguage}</span>
+      </footer>
+
+      {/* ── AI Code Explain Modal ── */}
+      {showExplainModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-[#12141f] border border-blue-500/30 rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col gap-4 text-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    AI Code Explainer
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-mono font-bold">
+                      Interactive Tutor
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    Analyzing code at {formatTime(currentTime)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExplainModal(false)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-blue-300 overflow-x-auto">
+                <pre>{currentCode || '// No code loaded'}</pre>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Lesson Summary:
+                </h4>
+                <p className="text-slate-300">
+                  This interactive lesson synchronizes code in real-time with the audio/video lecture. You can pause playback at any moment by clicking the editor, experiment with custom code, and hit Re-sync when you want to resume following the instructor!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button
+                onClick={() => setShowExplainModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shadow-md shadow-blue-600/30"
+              >
+                Got it, resume lesson
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

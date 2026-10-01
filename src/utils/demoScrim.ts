@@ -48,259 +48,238 @@ export function generateSyntheticAudioDataUri(durationSeconds = 25): string {
 export const DEMO_SCRIM_MANIFEST: ScrimManifest = {
   version: '1.0.0',
   metadata: {
-    title: 'Building a Dynamic Reactive Counter',
-    description: 'Learn how to build interactive reactive widgets with Monaco editor telemetry and audio.',
-    author: 'Senior Systems Instructor',
+    title: 'GitHub JavaScript Launchpad',
+    description: 'Learn modern JavaScript fundamentals with synchronized Monaco editor telemetry and voice guidance.',
+    author: 'Guil Hernandez',
     recordedAt: '2026-10-01T00:00:00.000Z',
     duration: 18000,
     audioMimeType: 'audio/wav',
-    initialActiveFile: 'index.html',
+    initialActiveFile: 'index.js',
     totalEvents: 42,
     totalKeyframes: 3,
   },
   initialState: {
     files: {
+      'index.js': `import { generateTextAndImage } from "./utils.js"
+
+// 1. Change the value of the variable to your name
+let name = "Guil Hernandez"
+
+// 2. Change the value of the variable to your favorite activity
+let favoriteActivity = "snacking"
+
+// 3. Assign the favoritePlace variable your favorite place
+// I.e. city, mountain, pub, forest, beach, Manhattan, etc.
+let favoritePlace = "coffee shop"
+
+// 4. Configure the AI by setting a temperature from 0 to 1
+// The higher temperature, the more random & experimental output
+let temperature = 0.6
+
+// Optional: delete "avatar.jpg" and add a photo of yourself
+// (remember to use "avatar.jpg" as the name of your photo)
+
+generateTextAndImage(name, favoriteActivity, favoritePlace, temperature)
+`,
+      'utils.js': `// AI Helper utilities for EasyLearn JavaScript Launchpad
+export function generateTextAndImage(name, activity, place, temp) {
+  console.log(\`✨ [EasyLearn AI Agent]: Generating launchpad profile for \${name}...\`);
+  console.log(\`🎯 Activity: \${activity} | Place: \${place} | Temp: \${temp}\`);
+  const outputEl = document.getElementById('ai-card');
+  if (outputEl) {
+    outputEl.innerHTML = \`
+      <div class="launchpad-card">
+        <div class="avatar-ring">
+          <img src="avatar.jpg" alt="\${name}" class="avatar-img" />
+        </div>
+        <h3>\${name}</h3>
+        <p class="tagline">"A \${activity} at \${place} is like a dream come true."</p>
+        <div class="pill">Temperature: \${temp}</div>
+      </div>
+    \`;
+  }
+}
+`,
       'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <div class="counter-box">
-    <h2>Counter App</h2>
-    <span id="count">0</span>
-    <div class="actions">
-      <button id="inc">+ Increment</button>
-      <button id="dec">- Decrement</button>
-    </div>
-  </div>
-  <script src="script.js"></script>
+  <div id="ai-card"></div>
+  <script type="module" src="index.js"></script>
 </body>
 </html>`,
-      'styles.css': `body {
-  font-family: system-ui, sans-serif;
-  background: #0f172a;
-  color: white;
+      'index.css': `body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0b0f19;
+  color: #f1f5f9;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
+  padding: 16px;
 }
-.counter-box {
-  background: #1e293b;
-  padding: 2rem;
-  border-radius: 1rem;
-  border: 1px solid #334155;
+.launchpad-card {
+  background: #111827;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #1f2937;
   text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  max-width: 320px;
+  width: 100%;
 }
-#count {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #6366f1;
-  display: block;
-  margin: 1rem 0;
+.avatar-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  padding: 3px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
 }
-button {
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.5rem;
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #1f2937;
+}
+h3 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+.tagline {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0 0 16px;
+}
+.pill {
+  display: inline-block;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin: 0 0.25rem;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-button:hover {
-  transform: scale(1.05);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: #1e3a8a;
+  color: #93c5fd;
 }`,
-      'script.js': `// Interactive Counter Script
+      'avatar.jpg': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&crop=face',
+      'loading.gif': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop',
+      'script.js': `// Backward compatible alias
 let count = 0;
-const countEl = document.getElementById('count');
-const incBtn = document.getElementById('inc');
-const decBtn = document.getElementById('dec');
-
-incBtn.addEventListener('click', () => {
-  count++;
-  countEl.innerText = count;
-});
-
-decBtn.addEventListener('click', () => {
-  count--;
-  countEl.innerText = count;
-});
 `,
+      'styles.css': `body { background: #0b0f19; }`,
     },
-    activeFile: 'script.js',
+    activeFile: 'index.js',
   },
   keyframes: [
     {
       t: 0,
       files: {
+        'index.js': `import { generateTextAndImage } from "./utils.js"
+
+// 1. Change the value of the variable to your name
+let name = "Guil Hernandez"
+
+// 2. Change the value of the variable to your favorite activity
+let favoriteActivity = "snacking"
+
+// 3. Assign the favoritePlace variable your favorite place
+// I.e. city, mountain, pub, forest, beach, Manhattan, etc.
+let favoritePlace = "coffee shop"
+
+// 4. Configure the AI by setting a temperature from 0 to 1
+// The higher temperature, the more random & experimental output
+let temperature = 0.6
+
+generateTextAndImage(name, favoriteActivity, favoritePlace, temperature)
+`,
+        'utils.js': `export function generateTextAndImage(name, activity, place, temp) {
+  console.log(\`Generating launchpad for \${name}...\`);
+}`,
         'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <div class="counter-box">
-    <h2>Counter App</h2>
-    <span id="count">0</span>
-    <div class="actions">
-      <button id="inc">+ Increment</button>
-      <button id="dec">- Decrement</button>
-    </div>
-  </div>
-  <script src="script.js"></script>
+  <div id="ai-card"></div>
+  <script type="module" src="index.js"></script>
 </body>
 </html>`,
-        'styles.css': `body {
+        'index.css': `body {
   font-family: system-ui, sans-serif;
-  background: #0f172a;
+  background: #0b0f19;
   color: white;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
-}
-.counter-box {
-  background: #1e293b;
-  padding: 2rem;
-  border-radius: 1rem;
-  border: 1px solid #334155;
-  text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
-}
-#count {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #6366f1;
-  display: block;
-  margin: 1rem 0;
-}
-button {
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  margin: 0 0.25rem;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-button:hover {
-  transform: scale(1.05);
 }`,
-        'script.js': `// Interactive Counter Script
-let count = 0;
-const countEl = document.getElementById('count');
-const incBtn = document.getElementById('inc');
-const decBtn = document.getElementById('dec');
-
-incBtn.addEventListener('click', () => {
-  count++;
-  countEl.innerText = count;
-});
-
-decBtn.addEventListener('click', () => {
-  count--;
-  countEl.innerText = count;
-});
-`,
+        'avatar.jpg': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&crop=face',
+        'loading.gif': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop',
+        'script.js': `// Interactive Counter Script\nlet count = 0;`,
+        'styles.css': `body { background: #0b0f19; }`,
       },
-      activeFile: 'script.js',
+      activeFile: 'index.js',
     },
     {
       t: 8000,
       files: {
+        'index.js': `import { generateTextAndImage } from "./utils.js"
+
+// 1. Change the value of the variable to your name
+let name = "Guil Hernandez"
+
+// 2. Change the value of the variable to your favorite activity
+let favoriteActivity = "snacking"
+
+// 3. Assign the favoritePlace variable your favorite place
+// I.e. city, mountain, pub, forest, beach, Manhattan, etc.
+let favoritePlace = "coffee shop"
+
+// 4. Configure the AI by setting a temperature from 0 to 1
+let temperature = 0.7
+
+generateTextAndImage(name, favoriteActivity, favoritePlace, temperature)
+`,
+        'utils.js': `export function generateTextAndImage(name, activity, place, temp) {
+  console.log(\`Generating launchpad for \${name}...\`);
+}`,
         'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 <body>
-  <div class="counter-box">
-    <h2>Counter App</h2>
-    <span id="count">0</span>
-    <div class="actions">
-      <button id="inc">+ Increment</button>
-      <button id="dec">- Decrement</button>
-      <button id="reset">Reset</button>
-    </div>
-  </div>
-  <script src="script.js"></script>
+  <div id="ai-card"></div>
+  <script type="module" src="index.js"></script>
 </body>
 </html>`,
-        'styles.css': `body {
+        'index.css': `body {
   font-family: system-ui, sans-serif;
-  background: #0f172a;
+  background: #0b0f19;
   color: white;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
-}
-.counter-box {
-  background: #1e293b;
-  padding: 2rem;
-  border-radius: 1rem;
-  border: 1px solid #334155;
-  text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
-}
-#count {
-  font-size: 3rem;
-  font-weight: 800;
-  color: #6366f1;
-  display: block;
-  margin: 1rem 0;
-}
-button {
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  margin: 0 0.25rem;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-button:hover {
-  transform: scale(1.05);
 }`,
-        'script.js': `// Interactive Counter Script
-let count = 0;
-const countEl = document.getElementById('count');
-const incBtn = document.getElementById('inc');
-const decBtn = document.getElementById('dec');
-const resetBtn = document.getElementById('reset');
-
-incBtn.addEventListener('click', () => {
-  count++;
-  countEl.innerText = count;
-});
-
-decBtn.addEventListener('click', () => {
-  count--;
-  countEl.innerText = count;
-});
-
-resetBtn.addEventListener('click', () => {
-  count = 0;
-  countEl.innerText = count;
-});
-`,
+        'avatar.jpg': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&crop=face',
+        'loading.gif': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop',
+        'script.js': `// Interactive Counter Script\nlet count = 5;`,
+        'styles.css': `body { background: #0b0f19; }`,
       },
-      activeFile: 'script.js',
+      activeFile: 'index.js',
     },
   ],
   events: [
@@ -388,5 +367,13 @@ resetBtn.addEventListener('click', () => {
       xpReward: 100,
       targetFile: 'index.html',
     },
+  ],
+  captions: [
+    { t: 0, prefix: 'Welcome to the', highlight: 'JavaScript Launchpad', suffix: 'starter tutorial.' },
+    { t: 2500, prefix: 'First we declare', highlight: 'let name', suffix: 'with a custom string value.' },
+    { t: 5500, prefix: 'using the keyword', highlight: 'let followed', suffix: 'by the custom' },
+    { t: 9500, prefix: 'Assign your favorite place to the', highlight: 'favoritePlace', suffix: 'variable.' },
+    { t: 13000, prefix: 'Configure the AI by setting', highlight: 'temperature', suffix: 'from 0 to 1.' },
+    { t: 16000, prefix: 'Finally call', highlight: 'generateTextAndImage()', suffix: 'to render the card.' },
   ],
 };

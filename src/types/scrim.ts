@@ -94,6 +94,14 @@ export interface ScrimChallenge {
   targetFile?: string; // Specific file to test (e.g. 'script.js' or 'index.html')
 }
 
+export interface ScrimCaption {
+  t: number;
+  prefix?: string;
+  highlight?: string;
+  suffix?: string;
+  text?: string;
+}
+
 export interface ScrimManifest {
   version: '1.0.0';
   metadata: ScrimMetadata;
@@ -104,6 +112,7 @@ export interface ScrimManifest {
   keyframes: KeyframeSnapshot[];
   events: ScrimEvent[];
   challenges?: ScrimChallenge[];
+  captions?: ScrimCaption[];
 }
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopped';

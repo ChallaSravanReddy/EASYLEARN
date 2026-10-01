@@ -35,6 +35,7 @@ import { useScrimRecorder } from '../hooks/useScrimRecorder';
 import type { ScrimManifest, ScrimEvent } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
 import ScrimPublishModal from './ScrimPublishModal';
+import ScrimbaFileIcon from './ScrimbaFileIcon';
 
 export const LESSON_TEMPLATES: Record<string, { name: string; title: string; files: Record<string, string> }> = {
   counter: {
@@ -454,15 +455,43 @@ export default function RecordingStudio() {
     return 'plaintext';
   };
 
+  // Scrimba Deep Dark Monaco Theme
+  const handleEditorWillMount = (monaco: any) => {
+    monaco.editor.defineTheme('scrimba-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'f43f5e', fontStyle: 'bold' },
+        { token: 'string', foreground: '38bdf8' },
+        { token: 'number', foreground: 'a78bfa' },
+        { token: 'type', foreground: '34d399' },
+        { token: 'function', foreground: 'fbbf24' },
+      ],
+      colors: {
+        'editor.background': '#0c0e15',
+        'editor.foreground': '#f8fafc',
+        'editorLineNumber.foreground': '#334155',
+        'editorLineNumber.activeForeground': '#94a3b8',
+        'editor.lineHighlightBackground': '#141824',
+        'editorCursor.foreground': '#38bdf8',
+        'editor.selectionBackground': '#1d4ed855',
+      },
+    });
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] bg-slate-950 text-slate-100 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-5rem)] bg-[#0c0d14] text-slate-100 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       {/* ── TOP CONTROL BAR ──────────────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 z-20 shrink-0">
-        {/* Left: Title & Live Badge */}
-        <div className="flex items-center gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 bg-[#12141f] backdrop-blur-md border-b border-slate-800/80 z-20 shrink-0">
+        {/* Left: Scrimba Logo //, Title & Live Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
+            //
+          </div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
-              <Radio className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
+              <Radio className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -471,7 +500,7 @@ export default function RecordingStudio() {
                   value={lessonTitle}
                   onChange={(e) => setLessonTitle(e.target.value)}
                   disabled={status === 'recording' || status === 'paused'}
-                  className="bg-transparent text-sm font-bold text-white border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none transition-colors px-1 py-0.5"
+                  className="bg-transparent text-sm font-bold text-white border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition-colors px-1 py-0.5"
                   placeholder="Lesson Title..."
                 />
                 <select
@@ -640,16 +669,16 @@ export default function RecordingStudio() {
                   onClick={() => handleTabChange(fileName)}
                   className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-medium cursor-pointer transition-all border ${
                     isActive
-                      ? 'bg-slate-900 text-indigo-400 border-indigo-500/30 shadow-sm'
+                      ? 'bg-[#181c2b] text-white border-blue-500/40 shadow-sm'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border-transparent'
                   }`}
                 >
-                  <FileCode className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <ScrimbaFileIcon fileName={fileName} className="w-3.5 h-3.5" />
                   <span>{fileName}</span>
                   {Object.keys(files).length > 1 && (
                     <button
                       onClick={(e) => handleDeleteFile(fileName, e)}
-                      className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity p-0.5"
+                      className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity p-0.5 ml-1"
                       title="Delete file"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -661,7 +690,7 @@ export default function RecordingStudio() {
 
             {/* Add File Button / Input */}
             {showNewFileInput ? (
-              <div className="flex items-center gap-1 bg-slate-900 border border-indigo-500/50 rounded-lg px-2 py-1">
+              <div className="flex items-center gap-1 bg-slate-900 border border-blue-500/50 rounded-lg px-2 py-1">
                 <input
                   type="text"
                   value={newFileName}
@@ -681,7 +710,7 @@ export default function RecordingStudio() {
             ) : (
               <button
                 onClick={() => setShowNewFileInput(true)}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-indigo-400 hover:bg-slate-900/60 rounded-lg transition-colors"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-blue-400 hover:bg-slate-900/60 rounded-lg transition-colors cursor-pointer"
                 title="Add new file"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -694,13 +723,14 @@ export default function RecordingStudio() {
             ref={editorContainerRef}
             onPointerMove={(e) => recordPointerCoordinates(e.clientX, e.clientY)}
             onMouseMove={(e) => recordPointerCoordinates(e.clientX, e.clientY)}
-            className="flex-1 relative w-full h-full bg-[#1e1e1e]"
+            className="flex-1 relative w-full h-full bg-[#0c0d14]"
           >
             <Editor
               height="100%"
               width="100%"
               language={getLanguage(activeFile)}
-              theme="vs-dark"
+              theme="scrimba-dark"
+              beforeMount={handleEditorWillMount}
               value={files[activeFile] ?? ''}
               onChange={handleEditorChange}
               onMount={handleEditorMount}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import {
   Play,
@@ -40,11 +40,24 @@ import {
   Award,
   Loader2,
   X,
+  PanelLeftClose,
+  PanelLeft,
+  Columns,
+  Columns2,
+  Maximize2,
+  Minimize2,
+  ArrowLeft,
+  FilePlus,
+  FolderPlus,
+  Copy,
+  Split,
+  Maximize,
 } from 'lucide-react';
 import { useScrimPlayer } from '../hooks/useScrimPlayer';
 import { DEMO_SCRIM_MANIFEST, generateSyntheticAudioDataUri } from '../utils/demoScrim';
-import type { ScrimManifest, ScrimChallenge } from '../types/scrim';
+import type { ScrimManifest, ScrimChallenge, ScrimCaption } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
+import ScrimbaFileIcon from './ScrimbaFileIcon';
 import { fetchPublishedScrim } from '../services/scrimUploadService';
 import {
   runChallengeValidation,
@@ -63,7 +76,17 @@ function formatTime(ms: number): string {
     .padStart(2, '0')}.${tenths}`;
 }
 
+function formatSimpleTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export default function ScrimPlayerView() {
+  const navigate = useNavigate();
+  const playerRootRef = useRef<HTMLDivElement | null>(null);
+
   // Audio element reference for master clock
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
@@ -72,7 +95,6 @@ export default function ScrimPlayerView() {
   const [manifest, setManifest] = useState<ScrimManifest>(DEMO_SCRIM_MANIFEST);
   const [syntheticAudioUrl, setSyntheticAudioUrl] = useState<string>('');
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string>('');
-  const [showLivePreview, setShowLivePreview] = useState<boolean>(true);
   const [showManifestModal, setShowManifestModal] = useState<boolean>(false);
   const [jsonInput, setJsonInput] = useState<string>('');
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
@@ -80,6 +102,24 @@ export default function ScrimPlayerView() {
   const [newFileName, setNewFileName] = useState<string>('');
   const [showNewFileInput, setShowNewFileInput] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  // Scrimba UI Layout state (matching reference screenshot)
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [previewMode, setPreviewMode] = useState<'pip' | 'split' | 'hidden'>('pip');
+  const [showCaptions, setShowCaptions] = useState<boolean>(true);
+  const [showConceptSlide, setShowConceptSlide] = useState<boolean>(true);
+  const [showExplainModal, setShowExplainModal] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      playerRootRef.current?.requestFullscreen?.().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
 
   // Active audio URL is the recorded voice stream if available, else synthetic tone
   const activeAudioUrl = recordedAudioUrl || syntheticAudioUrl;
@@ -150,6 +190,49 @@ export default function ScrimPlayerView() {
       return 150;
     }
   });
+
+  // Dynamic Synchronized Closed Captions (matching Scrimba screenshot)
+  const activeCaption = useMemo(() => {
+    if (!manifest.captions || manifest.captions.length === 0) {
+      if (currentTimeMs >= 5500 && currentTimeMs < 9500) {
+        return { prefix: 'using the keyword', highlight: 'let followed', suffix: 'by the custom' };
+      }
+      if (currentTimeMs >= 9500 && currentTimeMs < 13000) {
+        return { prefix: 'Assign your favorite place to', highlight: 'favoritePlace', suffix: 'variable.' };
+      }
+      if (currentTimeMs >= 13000) {
+        return { prefix: 'Configure the AI by setting', highlight: 'temperature', suffix: 'from 0 to 1.' };
+      }
+      return { prefix: 'Welcome to the', highlight: 'JavaScript Launchpad', suffix: 'starter tutorial.' };
+    }
+    const current = [...manifest.captions].reverse().find((c) => currentTimeMs >= c.t);
+    return current || manifest.captions[0];
+  }, [manifest.captions, currentTimeMs]);
+
+  // Scrimba Deep Dark Monaco Theme
+  const handleEditorWillMount = (monaco: any) => {
+    monaco.editor.defineTheme('scrimba-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'f43f5e', fontStyle: 'bold' },
+        { token: 'string', foreground: '38bdf8' },
+        { token: 'number', foreground: 'a78bfa' },
+        { token: 'type', foreground: '34d399' },
+        { token: 'function', foreground: 'fbbf24' },
+      ],
+      colors: {
+        'editor.background': '#0c0e15',
+        'editor.foreground': '#f8fafc',
+        'editorLineNumber.foreground': '#334155',
+        'editorLineNumber.activeForeground': '#94a3b8',
+        'editor.lineHighlightBackground': '#141824',
+        'editorCursor.foreground': '#38bdf8',
+        'editor.selectionBackground': '#1d4ed855',
+      },
+    });
+  };
 
   // Switch to challenge target file if declared
   useEffect(() => {
@@ -393,7 +476,10 @@ export default function ScrimPlayerView() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] bg-slate-950 text-slate-100 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
+    <div
+      ref={playerRootRef}
+      className="flex flex-col h-screen w-full bg-[#0c0d14] text-slate-100 select-none overflow-hidden font-sans relative"
+    >
       {/* ── Hidden HTML5 Audio Element (Driven by Audio Master Clock) ── */}
       <audio
         ref={audioElementRef}
@@ -403,175 +489,198 @@ export default function ScrimPlayerView() {
         className="hidden"
       />
 
-      {/* ── Top Bar: Header & Telemetry Status ── */}
-      <header className="h-14 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 flex items-center justify-between shrink-0 select-none z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Radio className="w-4 h-4 text-white animate-pulse" />
+      {/* ── Scrimba Top Navigation Bar ── */}
+      <header className="h-10 bg-[#12141f] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none z-20">
+        {/* Left: Back, Logo //, Title breadcrumb, Time capsule */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
+            //
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-white tracking-tight">
-                {manifest.metadata.title}
-              </h1>
-              {isForked ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <GitFork className="w-3 h-3" /> Forked Session
-                </span>
-              ) : isStudentModified ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <AlertCircle className="w-3 h-3" /> Student Modified
-                </span>
-              ) : isPlaying ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-                  Live Replay
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
-                  Paused (Interactive)
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 truncate max-w-md">
-              Instructor: <span className="text-slate-300 font-medium">{manifest.metadata.author || 'Instructor'}</span> • {manifest.metadata.totalEvents} events • {manifest.keyframes.length} keyframes
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="text-white text-xs font-semibold tracking-tight truncate max-w-[180px] sm:max-w-xs">
+              {manifest.metadata.title}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300">
+              {formatSimpleTime(currentTimeMs)} / {formatSimpleTime(durationMs)}
+            </span>
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Right: EXPLAIN button, layout switchers, XP & Challenges */}
         <div className="flex items-center gap-2">
-          {/* Gamified XP Tracker */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold shadow-sm">
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+          {/* AI Explain Button */}
+          <button
+            onClick={() => setShowExplainModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-950/70 hover:bg-blue-900/80 text-blue-400 border border-blue-500/40 text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm shadow-blue-500/10 hover:scale-105 active:scale-95"
+            title="Ask AI to explain current code line-by-line"
+          >
+            <Sparkles className="w-3 h-3 text-blue-400" />
+            <span>EXPLAIN</span>
+          </button>
+
+          {/* Files Sidebar Toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1 rounded text-xs transition-colors ${
+              sidebarOpen ? 'text-slate-200 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={sidebarOpen ? 'Hide Files sidebar' : 'Show Files sidebar'}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+
+          {/* Layout Mode Toggles */}
+          <div className="flex items-center bg-slate-900 rounded-md border border-slate-800 p-0.5">
+            <button
+              onClick={() => setPreviewMode('hidden')}
+              className={`p-1 rounded text-xs transition-colors ${
+                previewMode === 'hidden' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Code Only"
+            >
+              <Columns className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setPreviewMode('split')}
+              className={`p-1 rounded text-xs transition-colors ${
+                previewMode === 'split' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Split View (Docked)"
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setPreviewMode('pip')}
+              className={`p-1 rounded text-xs transition-colors ${
+                previewMode === 'pip' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Mini Browser (Floating PIP)"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Compact XP Tracker */}
+          <div className="hidden sm:flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold">
+            <Trophy className="w-3 h-3 text-amber-400" />
             <span className="font-mono">{studentXp} XP</span>
           </div>
 
-          {/* Challenges Indicator */}
-          {manifest.challenges && manifest.challenges.length > 0 && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-semibold text-indigo-300">
-              <Zap className="w-3 h-3 text-indigo-400" />
-              <span>
-                {completedChallengeIds.length}/{manifest.challenges.length} Challenges Solved
-              </span>
-            </div>
-          )}
-
-          {/* If student has modified or forked, allow one-click reset to instructor code */}
-          {(isStudentModified || isForked) && (
-            <button
-              onClick={revertToInstructor}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30 transition-all shadow-sm"
-              title="Discard custom modifications and restore exact instructor code at current timestamp"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Revert to Instructor
-            </button>
-          )}
-
+          {/* Fullscreen Button */}
           <button
-            onClick={() => setShowManifestModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
-            title="Load custom Scrim JSON or switch demo"
+            onClick={toggleFullscreen}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           >
-            <Upload className="w-3.5 h-3.5" />
-            Load Scrim
-          </button>
-
-          <button
-            onClick={() => setShowLivePreview(!showLivePreview)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-              showLivePreview
-                ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/30'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-            }`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            {showLivePreview ? 'Hide Preview' : 'Show Preview'}
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
       </header>
 
-      {/* ── Main Workspace: Monaco Editor & Live Preview Pane ── */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* Left: Code Editor Workspace */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] relative">
-          {/* File Tabs Header */}
-          <div className="h-10 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-2 shrink-0 select-none overflow-x-auto">
-            <div className="flex items-center gap-1 overflow-x-auto py-1">
+      {/* ── Main Workspace ── */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative bg-[#0c0d14]">
+        {/* Left: Collapsible Scrimba FILES Sidebar */}
+        {sidebarOpen && (
+          <div className="w-48 sm:w-52 bg-[#0d0f17] border-r border-slate-800/80 flex flex-col shrink-0 select-none">
+            {/* Header */}
+            <div className="h-8 px-3 flex items-center justify-between border-b border-slate-800/60 text-slate-400 text-[10px] font-bold tracking-wider uppercase">
+              <span>FILES</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setShowNewFileInput(true)}
+                  className="p-1 rounded hover:text-white hover:bg-slate-800"
+                  title="New File"
+                >
+                  <FilePlus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Inline new file input */}
+            {showNewFileInput && (
+              <div className="px-2 py-1 bg-slate-900 border-b border-slate-800 flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  placeholder="filename.ext"
+                  className="bg-transparent text-xs text-white focus:outline-none w-full font-mono"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newFileName.trim()) {
+                      addNewFile(newFileName.trim());
+                      setNewFileName('');
+                      setShowNewFileInput(false);
+                    } else if (e.key === 'Escape') {
+                      setShowNewFileInput(false);
+                    }
+                  }}
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    if (newFileName.trim()) {
+                      addNewFile(newFileName.trim());
+                      setNewFileName('');
+                      setShowNewFileInput(false);
+                    }
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {/* File List items with Scrimba badges */}
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
               {Object.keys(files).map((fileName) => {
                 const isActive = activeFile === fileName;
                 return (
-                  <button
+                  <div
                     key={fileName}
                     onClick={() => selectFile(fileName)}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-colors ${
                       isActive
-                        ? 'bg-[#1e1e1e] text-indigo-400 border border-indigo-500/30 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        ? 'bg-[#181c2b] text-white font-medium shadow-sm border border-slate-700/60'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
                     }`}
                   >
-                    <FileCode className="w-3.5 h-3.5" />
-                    <span>{fileName}</span>
-                  </button>
+                    <ScrimbaFileIcon fileName={fileName} className="w-3.5 h-3.5" />
+                    <span className="truncate flex-1">{fileName}</span>
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  </div>
                 );
               })}
-
-              {/* Add file button */}
-              {showNewFileInput ? (
-                <div className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                  <input
-                    type="text"
-                    value={newFileName}
-                    onChange={(e) => setNewFileName(e.target.value)}
-                    placeholder="filename.ext"
-                    className="bg-transparent text-xs text-white focus:outline-none w-24 font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newFileName.trim()) {
-                        addNewFile(newFileName.trim());
-                        setNewFileName('');
-                        setShowNewFileInput(false);
-                      } else if (e.key === 'Escape') {
-                        setShowNewFileInput(false);
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => {
-                      if (newFileName.trim()) {
-                        addNewFile(newFileName.trim());
-                        setNewFileName('');
-                        setShowNewFileInput(false);
-                      }
-                    }}
-                    className="text-emerald-400 hover:text-emerald-300"
-                  >
-                    <Check className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowNewFileInput(true)}
-                  className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                  title="Add new file"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
+          </div>
+        )}
 
-            {/* Quick status pill */}
-            <div className="flex items-center gap-2 pr-2 text-[11px] text-slate-400 font-mono">
+        {/* Center: Code Editor Area */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
+          {/* Active File Tab Bar */}
+          <div className="h-8 bg-[#0e1017] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <ScrimbaFileIcon fileName={activeFile} className="w-3.5 h-3.5" />
+              <span className="text-xs font-mono text-slate-200">{activeFile}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500">
               {isPlaying ? (
-                <span className="text-indigo-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  Audio Master Clock Active
+                <span className="text-indigo-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                  Live Sync
                 </span>
               ) : (
-                <span className="text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Edit-on-Pause Ready
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Interactive Editor
                 </span>
               )}
             </div>
@@ -591,7 +700,8 @@ export default function ScrimPlayerView() {
             <Editor
               height="100%"
               language={getFileLanguage(activeFile)}
-              theme="vs-dark"
+              theme="scrimba-dark"
+              beforeMount={handleEditorWillMount}
               value={files[activeFile] || ''}
               options={{
                 fontSize: 14,
@@ -624,11 +734,11 @@ export default function ScrimPlayerView() {
                 }}
               >
                 {/* Simulated Instructor Cursor */}
-                <MousePointer2 className="w-5 h-5 -rotate-45 drop-shadow-md text-indigo-400 fill-indigo-400" />
+                <MousePointer2 className="w-5 h-5 -rotate-45 drop-shadow-md text-blue-400 fill-blue-400" />
 
                 {/* Instructor Tag Pill */}
-                <div className="absolute left-4 top-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-600/90 text-white text-[10px] font-bold tracking-wider shadow-lg border border-indigo-400/40 whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-200 animate-ping" />
+                <div className="absolute left-4 top-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-600/90 text-white text-[10px] font-bold tracking-wider shadow-lg border border-blue-400/40 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-200 animate-ping" />
                   INSTRUCTOR
                 </div>
               </div>
@@ -640,6 +750,108 @@ export default function ScrimPlayerView() {
                 <span className="px-2.5 py-1 rounded-md bg-slate-900/90 text-slate-300 text-[11px] border border-slate-700/80 shadow-md backdrop-blur">
                   Click code or press Space to pause & edit
                 </span>
+              </div>
+            )}
+
+            {/* ── Large Semi-Transparent Center Blue Play Button (Scrimba Signature) ── */}
+            {!isPlaying && (!activeChallenge || !showChallengeModal) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  play();
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 transition-all hover:scale-110 active:scale-95 group focus:outline-none cursor-pointer p-4"
+                title="Play Scrim"
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500/80 hover:bg-blue-500 backdrop-blur-md flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.6)] border border-blue-400/50 transition-all">
+                  <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-white text-white translate-x-0.5" />
+                </div>
+              </button>
+            )}
+
+            {/* ── Floating Mini Browser PIP Card (Bottom-Right, Scrimba Signature) ── */}
+            {previewMode === 'pip' && (
+              <div className="absolute bottom-6 right-6 z-30 w-72 sm:w-80 bg-[#12141f]/95 border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[11px] text-slate-300 select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-200">Preview</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
+                      Ctrl+L
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPreviewMode('split')}
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                      title="Dock to side (Split view)"
+                    >
+                      <Columns2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('hidden')}
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                      title="Hide preview"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                {/* Body: Live Preview Sandbox Container */}
+                <div className="h-48 sm:h-52 bg-slate-950 overflow-hidden relative">
+                  <CodePreviewIframe
+                    files={files}
+                    entryFile="index.html"
+                    title="Mini Browser Sandbox"
+                    showConsoleDrawer={false}
+                    defaultConsoleOpen={false}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── Floating Concept Diagram / Notes Card (Bottom-Left, Scrimba Signature) ── */}
+            {showConceptSlide && (
+              <div className="absolute bottom-6 left-6 z-30 w-52 sm:w-60 bg-[#12141f]/95 border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[10px] text-slate-300 select-none">
+                  <span className="font-bold uppercase tracking-wider text-slate-400">Concept Diagram</span>
+                  <button
+                    onClick={() => setShowConceptSlide(false)}
+                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                    title="Hide diagram"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="p-3 bg-slate-950/70 text-slate-300 space-y-2">
+                  <div className="flex items-center justify-center gap-2 py-1">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Zap className="w-4 h-4 fill-emerald-400" />
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                    <div className="w-8 h-8 rounded-lg bg-blue-950/60 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <Code2 className="w-4 h-4" />
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                    <div className="w-8 h-8 rounded-lg bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-snug text-center font-mono">
+                    AI Pipeline: Text Prompt &rarr; Dynamic State &rarr; Live Visual Output
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Synchronized Closed Captions Pill (Bottom Center, Scrimba Signature) ── */}
+            {showCaptions && activeCaption && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none max-w-lg px-4 animate-in fade-in duration-150">
+                <div className="px-5 py-2 rounded-full bg-[#12141f]/95 border border-slate-700/60 shadow-2xl backdrop-blur-md text-slate-300 text-xs sm:text-sm font-medium tracking-wide flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <span>{activeCaption.prefix}</span>
+                  <span className="text-white font-bold tracking-normal">{activeCaption.highlight}</span>
+                  <span>{activeCaption.suffix}</span>
+                </div>
               </div>
             )}
 
@@ -817,8 +1029,8 @@ export default function ScrimPlayerView() {
           </div>
         </div>
 
-        {/* Right: Live Interactive Sandbox Preview */}
-        {showLivePreview && (
+        {/* Right: Docked Split View Sandbox Preview */}
+        {previewMode === 'split' && (
           <div className="w-[45%] flex flex-col border-l border-slate-800 bg-slate-900 min-w-[320px]">
             <CodePreviewIframe
               files={files}
@@ -831,16 +1043,16 @@ export default function ScrimPlayerView() {
         )}
       </div>
 
-      {/* ── Bottom Engine Console: Audio Master Clock Controls & Keyframe Scrubber ── */}
-      <footer className="bg-slate-900 border-t border-slate-800/80 px-4 py-3 flex flex-col gap-2 shrink-0 select-none z-20">
-        {/* Keyframe-Assisted Timeline Scrubber */}
+      {/* ── Bottom Scrimba Timeline & Master Audio Clock Console ── */}
+      <footer className="bg-[#12141f] border-t border-slate-800/80 px-4 py-2.5 flex flex-col gap-1.5 shrink-0 select-none z-20">
+        {/* Keyframe-Assisted Timeline Scrubber with Scrimba Electric Blue */}
         <div className="relative flex flex-col gap-1">
-          <div className="relative flex items-center h-6 group">
+          <div className="relative flex items-center h-5 group">
             {/* Background Track */}
             <div className="absolute inset-x-0 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              {/* Progress Fill */}
+              {/* Scrimba Blue Progress Fill */}
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-75"
+                className="h-full bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.7)] transition-all duration-75"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -851,7 +1063,7 @@ export default function ScrimPlayerView() {
               return (
                 <div
                   key={i}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-amber-400 border border-slate-900 shadow-md cursor-pointer hover:scale-150 transition-transform z-10"
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-cyan-400 border border-slate-900 shadow-md cursor-pointer hover:scale-150 transition-transform z-10"
                   style={{ left: `${kfPercent}%` }}
                   onMouseEnter={() => setHoverKeyframe(kf.t)}
                   onMouseLeave={() => setHoverKeyframe(null)}
@@ -910,7 +1122,7 @@ export default function ScrimPlayerView() {
             {/* Keyframe hover tooltip */}
             {hoverKeyframe !== null && (
               <div
-                className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-[10px] font-mono border border-slate-700 shadow-lg pointer-events-none z-30"
+                className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-800 text-cyan-300 text-[10px] font-mono border border-slate-700 shadow-lg pointer-events-none z-30"
                 style={{
                   left: `${(hoverKeyframe / durationMs) * 100}%`,
                 }}
@@ -924,26 +1136,26 @@ export default function ScrimPlayerView() {
         {/* Player Transport Controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Play/Pause Button */}
+            {/* Scrimba Play/Pause Button */}
             <button
               onClick={togglePlay}
-              className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
+              className="w-9 h-9 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-600/30 transition-all active:scale-95 cursor-pointer"
               title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
             >
               {isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" />
+                <Pause className="w-4 h-4 fill-current" />
               ) : (
-                <Play className="w-5 h-5 fill-current ml-0.5" />
+                <Play className="w-4 h-4 fill-current ml-0.5" />
               )}
             </button>
 
             {/* Skip Back 5s */}
             <button
               onClick={() => seekTo(Math.max(0, currentTimeMs - 5000))}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               title="Skip back 5s"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             {/* Time Display */}
@@ -954,14 +1166,14 @@ export default function ScrimPlayerView() {
             </div>
 
             {/* Speed Selector */}
-            <div className="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700/60 ml-2">
+            <div className="flex items-center bg-slate-900 rounded-md p-0.5 border border-slate-800 ml-2">
               {[0.75, 1, 1.25, 1.5, 2].map((spd) => (
                 <button
                   key={spd}
                   onClick={() => changePlaybackSpeed(spd)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono font-medium transition-colors ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono font-medium transition-colors cursor-pointer ${
                     playbackSpeed === spd
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -971,13 +1183,26 @@ export default function ScrimPlayerView() {
             </div>
           </div>
 
-          {/* Volume and Telemetry Status */}
-          <div className="flex items-center gap-4">
+          {/* Subtitles (CC), Volume, and Clock Telemetry */}
+          <div className="flex items-center gap-3">
+            {/* CC Subtitle Toggle */}
+            <button
+              onClick={() => setShowCaptions(!showCaptions)}
+              className={`px-2 py-0.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
+                showCaptions
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white bg-slate-800'
+              }`}
+              title={showCaptions ? 'Hide Subtitles' : 'Show Subtitles'}
+            >
+              CC
+            </button>
+
             {/* Volume control */}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? (
@@ -993,21 +1218,89 @@ export default function ScrimPlayerView() {
                 step={0.05}
                 value={isMuted ? 0 : volume}
                 onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                className="w-16 h-1 bg-slate-800 rounded-lg accent-indigo-500 cursor-pointer"
+                className="w-16 h-1 bg-slate-800 rounded-lg accent-blue-500 cursor-pointer"
               />
             </div>
 
             {/* Audio-driven master clock indicator */}
             <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-800 text-[11px] font-mono text-slate-400">
-              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-              <span>rAF Clock:</span>
-              <span className="text-emerald-400 font-semibold">
+              <Cpu className="w-3.5 h-3.5 text-blue-400" />
+              <span>Clock:</span>
+              <span className="text-cyan-400 font-semibold">
                 {Math.round(currentTimeMs)}ms
               </span>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* ── AI Code Explain Modal ── */}
+      {showExplainModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-[#12141f] border border-blue-500/30 rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col gap-4 text-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    AI Code Explainer
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-mono font-bold">
+                      Interactive Tutor
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    Analyzing {activeFile} at {formatSimpleTime(currentTimeMs)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExplainModal(false)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-blue-300 overflow-x-auto">
+                <code>let name = &quot;Guil Hernandez&quot;;</code>
+                <br />
+                <code>let favoriteActivity = &quot;snacking&quot;;</code>
+                <br />
+                <code>generateTextAndImage(name, favoriteActivity, favoritePlace, temperature);</code>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Explanation & Concepts:
+                </h4>
+                <ul className="space-y-1.5 list-disc pl-4 text-slate-300">
+                  <li>
+                    <strong className="text-white font-mono">let</strong>: Declares a block-scoped variable in modern JavaScript that can be reassigned later.
+                  </li>
+                  <li>
+                    <strong className="text-white font-mono">temperature</strong>: Controls AI generation creativity (0.0 means consistent and focused, 1.0 means creative and playful).
+                  </li>
+                  <li>
+                    <strong className="text-white font-mono">generateTextAndImage</strong>: Passes user parameters into an AI text & image generator to render the interactive greeting card!
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button
+                onClick={() => setShowExplainModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shadow-md shadow-blue-600/30"
+              >
+                Got it, resume lesson
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── State Branching (Edit-on-Pause) Modal Dialog ── */}
       {showBranchModal && (
