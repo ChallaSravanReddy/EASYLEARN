@@ -31,70 +31,213 @@ import {
 } from 'lucide-react';
 import { useScrimRecorder } from '../hooks/useScrimRecorder';
 import type { ScrimManifest, ScrimEvent } from '../types/scrim';
+import CodePreviewIframe from './CodePreviewIframe';
 
-const DEFAULT_FILES: Record<string, string> = {
-  'index.html': `<!DOCTYPE html>
+export const LESSON_TEMPLATES: Record<string, { name: string; title: string; files: Record<string, string> }> = {
+  counter: {
+    name: 'Interactive Counter',
+    title: 'Building an Interactive Counter',
+    files: {
+      'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Interactive Scrim Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Counter</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="card">
-    <h1 id="title">Welcome to Scrimba Live!</h1>
-    <p>Type code in Monaco to see live telemetry recording.</p>
-    <button id="btn">Click Me</button>
+    <div class="badge">EasyLearn Lesson</div>
+    <h1 id="title">Interactive Counter</h1>
+    <p class="subtitle">Modify HTML, CSS, or JS in Monaco to see live updates.</p>
+
+    <div class="counter-display">
+      <span id="count">0</span>
+    </div>
+
+    <div class="actions">
+      <button id="btn-dec" class="btn btn-secondary">- Decrement</button>
+      <button id="btn-reset" class="btn btn-outline">Reset</button>
+      <button id="btn-inc" class="btn btn-primary">+ Increment</button>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
 </html>`,
-  'styles.css': `body {
+      'styles.css': `body {
   font-family: system-ui, -apple-system, sans-serif;
   background: #0f172a;
   color: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
+  padding: 1rem;
 }
 
 .card {
   background: #1e293b;
-  padding: 2.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  padding: 2.25rem;
+  border-radius: 1.25rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   border: 1px solid #334155;
   text-align: center;
+  max-width: 380px;
+  width: 100%;
 }
 
-button {
-  background: #6366f1;
-  color: white;
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 0.825rem;
+  margin: 0 0 1.5rem;
+}
+
+.counter-display {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.875rem;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+#count {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn {
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.6rem 1rem;
   border-radius: 0.5rem;
   font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  transition: all 0.2s;
 }
 
-button:hover {
+.btn-primary {
+  background: #6366f1;
+  color: white;
+}
+.btn-primary:hover {
   background: #4f46e5;
   transform: translateY(-2px);
-}`,
-  'script.js': `// Live telemetry code
-const btn = document.getElementById('btn');
-const title = document.getElementById('title');
+}
 
-btn.addEventListener('click', () => {
-  title.style.color = '#38bdf8';
-  title.innerText = 'Telemetry captured successfully!';
-  console.log('Button clicked at runtime!');
+.btn-secondary {
+  background: #334155;
+  color: #f8fafc;
+}
+.btn-secondary:hover {
+  background: #475569;
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+.btn-outline:hover {
+  background: #1e293b;
+  color: white;
+}`,
+      'script.js': `// Interactive Counter Logic
+let count = 0;
+const countDisplay = document.getElementById('count');
+const incBtn = document.getElementById('btn-inc');
+const decBtn = document.getElementById('btn-dec');
+const resetBtn = document.getElementById('btn-reset');
+
+function updateDisplay() {
+  if (!countDisplay) return;
+  countDisplay.textContent = count;
+  countDisplay.style.transform = 'scale(1.2)';
+  setTimeout(() => {
+    countDisplay.style.transform = 'scale(1)';
+  }, 100);
+  console.log('Current count:', count);
+}
+
+incBtn?.addEventListener('click', () => {
+  count++;
+  updateDisplay();
+});
+
+decBtn?.addEventListener('click', () => {
+  count--;
+  updateDisplay();
+});
+
+resetBtn?.addEventListener('click', () => {
+  count = 0;
+  updateDisplay();
 });
 `,
+    },
+  },
+  blank: {
+    name: 'Blank Canvas',
+    title: 'New Web Project',
+    files: {
+      'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Project</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div style="text-align: center; padding: 3rem;">
+    <h1>Hello, World!</h1>
+    <p>Start writing your code in the Monaco editor.</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>`,
+      'styles.css': `body {
+  font-family: system-ui, sans-serif;
+  background: #0f172a;
+  color: #f8fafc;
+  margin: 0;
+}`,
+      'script.js': `console.log('Project initialized!');\n`,
+    },
+  },
 };
+
+const DEFAULT_FILES: Record<string, string> = LESSON_TEMPLATES.counter.files;
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -110,8 +253,19 @@ export default function RecordingStudio() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<Record<string, string>>(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState<string>('index.html');
-  const [lessonTitle, setLessonTitle] = useState<string>('Building an Interactive Component');
+  const [lessonTitle, setLessonTitle] = useState<string>('Building an Interactive Counter');
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('counter');
   const [newFileName, setNewFileName] = useState<string>('');
+
+  const handleTemplateChange = (templateKey: string) => {
+    setSelectedTemplateKey(templateKey);
+    const tmpl = LESSON_TEMPLATES[templateKey];
+    if (tmpl) {
+      setFiles(tmpl.files);
+      setLessonTitle(tmpl.title);
+      setActiveFile(Object.keys(tmpl.files)[0] || 'index.html');
+    }
+  };
   const [showNewFileInput, setShowNewFileInput] = useState<boolean>(false);
   const [showLivePreview, setShowLivePreview] = useState<boolean>(true);
   const [showTelemetryDrawer, setShowTelemetryDrawer] = useState<boolean>(true);
@@ -243,30 +397,6 @@ export default function RecordingStudio() {
     }
   };
 
-  // Build live sandbox iframe HTML
-  const compiledSandboxHtml = useMemo(() => {
-    const html = files['index.html'] || '';
-    const css = files['styles.css'] || '';
-    const js = files['script.js'] || '';
-
-    let doc = html;
-    if (css) {
-      if (doc.includes('</head>')) {
-        doc = doc.replace('</head>', `<style>${css}</style></head>`);
-      } else {
-        doc = `<style>${css}</style>` + doc;
-      }
-    }
-    if (js) {
-      if (doc.includes('</body>')) {
-        doc = doc.replace('</body>', `<script>${js}</script></body>`);
-      } else {
-        doc = doc + `<script>${js}</script>`;
-      }
-    }
-    return doc;
-  }, [files]);
-
   const downloadAudio = () => {
     if (!recordingResult) return;
     const a = document.createElement('a');
@@ -317,14 +447,26 @@ export default function RecordingStudio() {
               <Radio className="w-4 h-4 text-white" />
             </div>
             <div>
-              <input
-                type="text"
-                value={lessonTitle}
-                onChange={(e) => setLessonTitle(e.target.value)}
-                disabled={status === 'recording' || status === 'paused'}
-                className="bg-transparent text-sm font-bold text-white border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none transition-colors px-1 py-0.5"
-                placeholder="Lesson Title..."
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={lessonTitle}
+                  onChange={(e) => setLessonTitle(e.target.value)}
+                  disabled={status === 'recording' || status === 'paused'}
+                  className="bg-transparent text-sm font-bold text-white border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none transition-colors px-1 py-0.5"
+                  placeholder="Lesson Title..."
+                />
+                <select
+                  value={selectedTemplateKey}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                  disabled={status === 'recording' || status === 'paused'}
+                  className="bg-slate-800 text-[11px] text-slate-300 border border-slate-700 rounded-lg px-2 py-0.5 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
+                  title="Switch starter template"
+                >
+                  <option value="counter">Template: Interactive Counter</option>
+                  <option value="blank">Template: Blank Canvas</option>
+                </select>
+              </div>
               <p className="text-[10px] text-slate-400 font-mono">Monaco Telemetry & Audio Stream Studio</p>
             </div>
           </div>
@@ -565,23 +707,16 @@ export default function RecordingStudio() {
           </div>
         </div>
 
-        {/* ── LIVE HTML SANDBOX PREVIEW (OPTIONAL) ─────────────────────────────────── */}
+        {/* ── LIVE HTML SANDBOX PREVIEW ── */}
         {showLivePreview && (
           <div className="w-80 md:w-96 flex flex-col bg-slate-950 border-r border-slate-800">
-            <div className="flex items-center justify-between px-4 h-10 bg-slate-900/80 border-b border-slate-800 text-xs font-bold text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-indigo-400" /> Live Sandbox
-              </span>
-              <span className="text-[10px] text-emerald-400 font-mono">Synced</span>
-            </div>
-            <div className="flex-1 bg-white p-0 overflow-hidden">
-              <iframe
-                title="Live Sandbox Preview"
-                srcDoc={compiledSandboxHtml}
-                sandbox="allow-scripts"
-                className="w-full h-full border-none"
-              />
-            </div>
+            <CodePreviewIframe
+              files={files}
+              entryFile="index.html"
+              title="Live Sandbox"
+              showConsoleDrawer={true}
+              defaultConsoleOpen={false}
+            />
           </div>
         )}
 
