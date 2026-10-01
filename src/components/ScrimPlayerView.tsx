@@ -30,12 +30,27 @@ import {
   Cpu,
   MousePointer,
   HelpCircle,
+  Trophy,
+  Zap,
+  CheckCircle,
+  XCircle,
+  Lightbulb,
+  FastForward,
+  Award,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { useScrimPlayer } from '../hooks/useScrimPlayer';
 import { DEMO_SCRIM_MANIFEST, generateSyntheticAudioDataUri } from '../utils/demoScrim';
-import type { ScrimManifest } from '../types/scrim';
+import type { ScrimManifest, ScrimChallenge } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
 import { fetchPublishedScrim } from '../services/scrimUploadService';
+import {
+  runChallengeValidation,
+  playCelebrationChime,
+  playFailureBuzz,
+  ChallengeValidationResult,
+} from '../utils/challengeRunner';
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -89,6 +104,13 @@ export default function ScrimPlayerView() {
     files,
     activeFile,
     virtualPointer,
+    activeChallenge,
+    showChallengeModal,
+    completedChallengeIds,
+    completeChallenge,
+    skipChallenge,
+    dismissChallengeModal,
+    reopenChallengeModal,
     isStudentModified,
     isForked,
     showBranchModal,
@@ -114,6 +136,88 @@ export default function ScrimPlayerView() {
     manifest,
     audioSrc: activeAudioUrl,
   });
+
+  // Challenge Runner & XP Gamification States
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<ChallengeValidationResult | null>(null);
+  const [showHint, setShowHint] = useState<boolean>(false);
+  const [autoResumeCountdown, setAutoResumeCountdown] = useState<number | null>(null);
+  const [studentXp, setStudentXp] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('easylearn_student_xp') || '150', 10);
+    } catch {
+      return 150;
+    }
+  });
+
+  // Switch to challenge target file if declared
+  useEffect(() => {
+    if (activeChallenge) {
+      setTestResult(null);
+      setShowHint(false);
+      setAutoResumeCountdown(null);
+      if (activeChallenge.targetFile && files[activeChallenge.targetFile] !== undefined) {
+        selectFile(activeChallenge.targetFile);
+      }
+    }
+  }, [activeChallenge, files, selectFile]);
+
+  // Auto-resume countdown after passing challenge tests
+  useEffect(() => {
+    if (autoResumeCountdown === null) return;
+    if (autoResumeCountdown <= 0) {
+      setAutoResumeCountdown(null);
+      completeChallenge(activeChallenge?.id || (activeChallenge ? String(activeChallenge.timestamp) : undefined), true);
+      setTestResult(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoResumeCountdown((c) => (c !== null ? c - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoResumeCountdown, completeChallenge, activeChallenge]);
+
+  // Execute sandboxed assertions for active challenge
+  const handleRunTests = async () => {
+    if (!activeChallenge) return;
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const result = await runChallengeValidation(files, activeChallenge);
+      setTestResult(result);
+
+      if (result.passed) {
+        playCelebrationChime();
+        const earnedXp = activeChallenge.xpReward || 50;
+        setStudentXp((prev) => {
+          const next = prev + earnedXp;
+          try {
+            localStorage.setItem('easylearn_student_xp', String(next));
+          } catch {}
+          return next;
+        });
+        setAutoResumeCountdown(4);
+      } else {
+        playFailureBuzz();
+        setAutoResumeCountdown(null);
+      }
+    } catch (err: any) {
+      setTestResult({
+        passed: false,
+        message: 'Validation execution error',
+        error: err.message || String(err),
+        hint: activeChallenge.hint,
+        logs: [],
+      });
+      playFailureBuzz();
+      setAutoResumeCountdown(null);
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   // Attach audio element reference to hook
   useEffect(() => {
@@ -336,6 +440,22 @@ export default function ScrimPlayerView() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Gamified XP Tracker */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold shadow-sm">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-mono">{studentXp} XP</span>
+          </div>
+
+          {/* Challenges Indicator */}
+          {manifest.challenges && manifest.challenges.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-semibold text-indigo-300">
+              <Zap className="w-3 h-3 text-indigo-400" />
+              <span>
+                {completedChallengeIds.length}/{manifest.challenges.length} Challenges Solved
+              </span>
+            </div>
+          )}
+
           {/* If student has modified or forked, allow one-click reset to instructor code */}
           {(isStudentModified || isForked) && (
             <button
@@ -529,6 +649,176 @@ export default function ScrimPlayerView() {
                 </span>
               </div>
             )}
+
+            {/* ── FLOATING INTERACTIVE CHALLENGE BANNER ── */}
+            {activeChallenge && showChallengeModal && (
+              <div className="absolute inset-x-4 bottom-4 z-40 max-w-2xl mx-auto bg-slate-900/95 backdrop-blur-xl border-2 border-indigo-500/50 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-950 border-b border-indigo-500/30">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400">
+                      <Zap className="w-4 h-4 fill-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-indigo-400 to-violet-300 bg-clip-text text-transparent">
+                          Interactive Code Challenge
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <Trophy className="w-3 h-3 text-amber-400" />
+                          +{activeChallenge.xpReward || 50} XP
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        Milestone at {formatTime(activeChallenge.timestamp)} • Scrim paused for student challenge
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={dismissChallengeModal}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                      title="Minimize prompt to see code full screen"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-3.5 text-xs text-slate-200">
+                  {/* Goal instructions */}
+                  <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                      Your Objective:
+                    </span>
+                    <p className="text-sm font-semibold text-white leading-relaxed">
+                      {activeChallenge.instructions}
+                    </p>
+                    {activeChallenge.targetFile && (
+                      <div className="pt-1 flex items-center gap-2">
+                        <span className="text-[11px] text-slate-400">Target File:</span>
+                        <button
+                          onClick={() => selectFile(activeChallenge.targetFile!)}
+                          className="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-mono text-[11px] font-bold cursor-pointer"
+                        >
+                          📄 {activeChallenge.targetFile}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hint Toggle Drawer */}
+                  {activeChallenge.hint && (
+                    <div className="space-y-1.5">
+                      <button
+                        onClick={() => setShowHint(!showHint)}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        <span>{showHint ? 'Hide Hint' : '💡 Need a hint?'}</span>
+                      </button>
+                      {showHint && (
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs font-mono animate-in fade-in duration-150">
+                          {activeChallenge.hint}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Test Validation Results Feedback */}
+                  {testResult && (
+                    <div
+                      className={`p-3.5 rounded-xl border animate-in fade-in slide-in-from-top-2 duration-200 ${
+                        testResult.passed
+                          ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-200'
+                          : 'bg-rose-950/70 border-rose-500/50 text-rose-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        {testResult.passed ? (
+                          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1 space-y-1">
+                          <p className="font-bold text-sm">
+                            {testResult.passed ? '🎉 Awesome job! Challenge Passed!' : 'Challenge tests not passing yet'}
+                          </p>
+                          <p className="text-xs opacity-90">
+                            {testResult.error || testResult.message}
+                          </p>
+                          {testResult.passed && autoResumeCountdown !== null && (
+                            <p className="text-[11px] text-emerald-300 font-mono pt-1">
+                              Auto-resuming lesson in {autoResumeCountdown}s...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-between px-5 py-3 bg-slate-950/90 border-t border-slate-800">
+                  <button
+                    onClick={skipChallenge}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                    title="Skip challenge milestone and continue lesson"
+                  >
+                    <FastForward className="w-3.5 h-3.5" />
+                    Skip Challenge
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {testResult?.passed ? (
+                      <button
+                        onClick={() => {
+                          completeChallenge(activeChallenge.id || String(activeChallenge.timestamp), true);
+                          setTestResult(null);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        Continue Lesson
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleRunTests}
+                        disabled={isTesting}
+                        className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                      >
+                        {isTesting ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Running Tests...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            Run Tests
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Minimized Floating Challenge Pill */}
+            {activeChallenge && !showChallengeModal && (
+              <div className="absolute bottom-4 right-4 z-40 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <button
+                  onClick={reopenChallengeModal}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs shadow-xl shadow-indigo-600/40 border border-indigo-400/40 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                >
+                  <Zap className="w-4 h-4 fill-white animate-bounce" />
+                  <span>Resume Challenge (+{activeChallenge.xpReward || 50} XP)</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -576,6 +866,32 @@ export default function ScrimPlayerView() {
                   }}
                   title={`Keyframe #${i + 1} at ${formatTime(kf.t)} (Instant Snapshot)`}
                 />
+              );
+            })}
+
+            {/* Interactive Challenge Milestone Pins */}
+            {(manifest.challenges || []).map((ch, idx) => {
+              const chPercent = durationMs > 0 ? (ch.timestamp / durationMs) * 100 : 0;
+              const isCompleted = completedChallengeIds.includes(ch.id || String(ch.timestamp));
+              return (
+                <div
+                  key={ch.id || idx}
+                  className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 border-2 shadow-lg cursor-pointer hover:scale-150 transition-all z-20 flex items-center justify-center ${
+                    isCompleted
+                      ? 'bg-emerald-500 border-emerald-300 shadow-emerald-500/40'
+                      : 'bg-gradient-to-tr from-amber-500 to-rose-500 border-amber-200 animate-pulse shadow-amber-500/50'
+                  }`}
+                  style={{ left: `${chPercent}%` }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    seekTo(ch.timestamp);
+                  }}
+                  title={`⚡ Challenge #${idx + 1}: ${ch.instructions} (${isCompleted ? 'Solved' : 'Pending'})`}
+                >
+                  <span className="-rotate-45 text-[8px] font-black text-white leading-none">
+                    {isCompleted ? '✓' : '⚡'}
+                  </span>
+                </div>
               );
             })}
 

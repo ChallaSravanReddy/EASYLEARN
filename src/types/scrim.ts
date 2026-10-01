@@ -83,6 +83,17 @@ export interface ScrimMetadata {
   totalKeyframes: number;
 }
 
+export interface ScrimChallenge {
+  id?: string;
+  timestamp: number; // Milestone timestamp in milliseconds where scrim pauses
+  instructions: string; // The challenge prompt / goal for the student
+  expectedOutput?: string; // Optional expected console or DOM text output
+  testCode?: string; // Optional automated JavaScript assertion test suite
+  hint?: string; // Helpful progressive hint shown on test failure
+  xpReward?: number; // Experience points rewarded on completion (e.g. 50 XP)
+  targetFile?: string; // Specific file to test (e.g. 'script.js' or 'index.html')
+}
+
 export interface ScrimManifest {
   version: '1.0.0';
   metadata: ScrimMetadata;
@@ -92,6 +103,7 @@ export interface ScrimManifest {
   };
   keyframes: KeyframeSnapshot[];
   events: ScrimEvent[];
+  challenges?: ScrimChallenge[];
 }
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopped';

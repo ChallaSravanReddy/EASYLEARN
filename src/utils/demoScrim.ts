@@ -349,4 +349,44 @@ resetBtn.addEventListener('click', () => {
     { t: 9500, type: 'file_switch', fileId: 'script.js' },
     { t: 10000, type: 'pointer', x: 320, y: 280, relX: 0.5, relY: 0.4, fileId: 'script.js' },
   ],
+  challenges: [
+    {
+      id: 'challenge-min-clamp',
+      timestamp: 6000,
+      instructions: 'Clamp the counter so it never drops below 0 when the Decrement button is clicked!',
+      hint: 'In script.js, wrap the decrement logic in an if condition: if (count > 0) { count--; countEl.innerText = count; }',
+      testCode: `
+        const decBtn = document.getElementById('dec');
+        const countEl = document.getElementById('count');
+        expect(decBtn).toBeTruthy();
+        expect(countEl).toBeTruthy();
+        // Click decrement when count is 0
+        decBtn.click();
+        const currentVal = parseInt(countEl.innerText || '0', 10);
+        expect(currentVal).toBeGreaterThan(-1);
+      `,
+      xpReward: 50,
+      targetFile: 'script.js',
+    },
+    {
+      id: 'challenge-reset-button',
+      timestamp: 12000,
+      instructions: 'Add a button with id="reset" that resets the counter back to 0 when clicked!',
+      hint: 'Add <button id="reset">Reset</button> in index.html, then in script.js add document.getElementById("reset").addEventListener("click", () => { count = 0; countEl.innerText = count; })',
+      testCode: `
+        const resetBtn = document.getElementById('reset');
+        const incBtn = document.getElementById('inc');
+        const countEl = document.getElementById('count');
+        expect(resetBtn).toBeTruthy();
+        expect(incBtn).toBeTruthy();
+        // Increment and test reset
+        incBtn.click();
+        incBtn.click();
+        resetBtn.click();
+        expect(parseInt(countEl.innerText || '0', 10)).toBe(0);
+      `,
+      xpReward: 100,
+      targetFile: 'index.html',
+    },
+  ],
 };

@@ -8,6 +8,7 @@ import type {
   CursorSelectionEvent,
   PointerEventTelemetry,
   FileSwitchEvent,
+  ScrimChallenge,
 } from '../types/scrim';
 
 export interface VirtualPointerState {
@@ -58,6 +59,12 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
   const [activeFile, setActiveFile] = useState<string>('');
   const [files, setFiles] = useState<Record<string, string>>({});
   const [virtualPointer, setVirtualPointer] = useState<VirtualPointerState | null>(null);
+
+  // Interactive Challenge Mode State
+  const [activeChallenge, setActiveChallenge] = useState<ScrimChallenge | null>(null);
+  const [showChallengeModal, setShowChallengeModal] = useState<boolean>(false);
+  const [completedChallengeIds, setCompletedChallengeIds] = useState<string[]>([]);
+  const completedChallengeIdsRef = useRef<Set<string>>(new Set());
 
   // Edit-on-Pause & State Branching State
   const [isStudentModified, setIsStudentModified] = useState<boolean>(false);
@@ -138,6 +145,10 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     setIsStudentModified(false);
     setIsForked(false);
     setShowBranchModal(false);
+    setActiveChallenge(null);
+    setShowChallengeModal(false);
+    setCompletedChallengeIds([]);
+    completedChallengeIdsRef.current = new Set();
 
     if (editorRef.current && initFiles[initActive] !== undefined) {
       isProgrammaticEditRef.current = true;
@@ -437,7 +448,31 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
         return;
       }
 
-      // 2. Dispatch events up to audioTimeMs using linear index pointer
+      // 2. Interactive Challenge Milestone Auto-Pause & Prompt
+      const challenges = curManifest.challenges;
+      if (challenges && challenges.length > 0) {
+        const hitChallenge = challenges.find((c) => {
+          const key = c.id || String(c.timestamp);
+          return (
+            !completedChallengeIdsRef.current.has(key) &&
+            audioTimeMs >= c.timestamp &&
+            audioTimeMs <= c.timestamp + 800
+          );
+        });
+
+        if (hitChallenge) {
+          audio.pause();
+          audio.currentTime = hitChallenge.timestamp / 1000;
+          setCurrentTimeMs(hitChallenge.timestamp);
+          setIsPlaying(false);
+          setActiveChallenge(hitChallenge);
+          setShowChallengeModal(true);
+          baselineCodeOnPauseRef.current = JSON.parse(JSON.stringify(filesRef.current));
+          return;
+        }
+      }
+
+      // 3. Dispatch events up to audioTimeMs using linear index pointer
       const events = curManifest.events;
       let idx = nextEventIndexRef.current;
 
@@ -689,6 +724,59 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     return true;
   }, [selectFile]);
 
+  /**
+   * Complete active challenge:
+   * Marks milestone as completed, closes challenge modal, and optionally auto-resumes playback
+   */
+  const completeChallenge = useCallback(
+    (challengeKey?: string, autoResume = true) => {
+      const key = challengeKey || activeChallenge?.id || (activeChallenge ? String(activeChallenge.timestamp) : '');
+      if (key) {
+        completedChallengeIdsRef.current.add(key);
+        setCompletedChallengeIds(Array.from(completedChallengeIdsRef.current));
+      }
+      setShowChallengeModal(false);
+      setActiveChallenge(null);
+
+      if (autoResume) {
+        setTimeout(() => {
+          play();
+        }, 150);
+      }
+    },
+    [activeChallenge, play]
+  );
+
+  /**
+   * Skip active challenge without testing
+   */
+  const skipChallenge = useCallback(() => {
+    const key = activeChallenge?.id || (activeChallenge ? String(activeChallenge.timestamp) : '');
+    if (key) {
+      completedChallengeIdsRef.current.add(key);
+      setCompletedChallengeIds(Array.from(completedChallengeIdsRef.current));
+    }
+    setShowChallengeModal(false);
+    setActiveChallenge(null);
+    play();
+  }, [activeChallenge, play]);
+
+  /**
+   * Temporarily dismiss challenge banner so student can see full editor
+   */
+  const dismissChallengeModal = useCallback(() => {
+    setShowChallengeModal(false);
+  }, []);
+
+  /**
+   * Reopen challenge banner
+   */
+  const reopenChallengeModal = useCallback(() => {
+    if (activeChallenge) {
+      setShowChallengeModal(true);
+    }
+  }, [activeChallenge]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -710,6 +798,15 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     files,
     activeFile,
     virtualPointer,
+
+    // Interactive Challenge Mode
+    activeChallenge,
+    showChallengeModal,
+    completedChallengeIds,
+    completeChallenge,
+    skipChallenge,
+    dismissChallengeModal,
+    reopenChallengeModal,
 
     // State branching & edit-on-pause
     isStudentModified,
