@@ -28,10 +28,12 @@ import {
   Radio,
   FileJson,
   Music,
+  UploadCloud,
 } from 'lucide-react';
 import { useScrimRecorder } from '../hooks/useScrimRecorder';
 import type { ScrimManifest, ScrimEvent } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
+import ScrimPublishModal from './ScrimPublishModal';
 
 export const LESSON_TEMPLATES: Record<string, { name: string; title: string; files: Record<string, string> }> = {
   counter: {
@@ -272,6 +274,7 @@ export default function RecordingStudio() {
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<'events' | 'keyframes' | 'preview'>('events');
   const [copiedManifest, setCopiedManifest] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState<boolean>(false);
 
   // Result state after stopRecording()
   const [recordingResult, setRecordingResult] = useState<{
@@ -958,6 +961,12 @@ export default function RecordingStudio() {
                   <Download className="w-3.5 h-3.5" /> Download Manifest (.json)
                 </button>
                 <button
+                  onClick={() => setShowPublishModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                >
+                  <UploadCloud className="w-3.5 h-3.5" /> Publish to Cloud
+                </button>
+                <button
                   onClick={() => {
                     try {
                       sessionStorage.setItem(
@@ -978,6 +987,15 @@ export default function RecordingStudio() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Direct-to-Storage Cloud Publishing Modal ── */}
+      {showPublishModal && recordingResult && (
+        <ScrimPublishModal
+          audioBlob={recordingResult.audioBlob}
+          scrimManifest={recordingResult.scrimManifest}
+          onClose={() => setShowPublishModal(false)}
+        />
       )}
     </div>
   );

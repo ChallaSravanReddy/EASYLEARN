@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import {
   Play,
@@ -34,6 +35,7 @@ import { useScrimPlayer } from '../hooks/useScrimPlayer';
 import { DEMO_SCRIM_MANIFEST, generateSyntheticAudioDataUri } from '../utils/demoScrim';
 import type { ScrimManifest } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
+import { fetchPublishedScrim } from '../services/scrimUploadService';
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -61,6 +63,10 @@ export default function ScrimPlayerView() {
   const [newFileName, setNewFileName] = useState<string>('');
   const [showNewFileInput, setShowNewFileInput] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  // URL Query search params for cloud published scrims (/player?scrimId=xyz)
+  const [searchParams] = useSearchParams();
+  const scrimId = searchParams.get('scrimId');
 
   // Generate synthetic audio for demo scrim if needed
   useEffect(() => {
@@ -127,6 +133,22 @@ export default function ScrimPlayerView() {
       console.warn('Could not read session scrim:', err);
     }
   }, [loadManifest, syntheticAudioUrl]);
+
+  // Load published scrim from Supabase if scrimId parameter is present
+  useEffect(() => {
+    if (!scrimId) return;
+
+    fetchPublishedScrim(scrimId)
+      .then((data) => {
+        if (data) {
+          setManifest(data.manifest);
+          loadManifest(data.manifest, data.record.audio_url);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load published scrim from cloud:', err);
+      });
+  }, [scrimId, loadManifest]);
 
   // Spacebar toggle play/pause listener
   useEffect(() => {
