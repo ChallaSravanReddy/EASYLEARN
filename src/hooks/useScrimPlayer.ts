@@ -101,6 +101,18 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
     if (element) {
       element.playbackRate = playbackSpeed;
       element.volume = isMuted ? 0 : volume;
+
+      element.onloadedmetadata = () => {
+        if (element.duration === Infinity || isNaN(element.duration) || element.duration <= 0) {
+          // Workaround for Chromium unindexed WebM files to recover duration
+          element.currentTime = 1e101;
+          element.ontimeupdate = () => {
+            element.ontimeupdate = null;
+            element.currentTime = 0;
+          };
+        }
+      };
+
       if (audioUrl && element.src !== audioUrl) {
         element.src = audioUrl;
         element.load();

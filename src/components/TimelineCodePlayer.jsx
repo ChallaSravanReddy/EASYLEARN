@@ -177,7 +177,6 @@ export default function TimelineCodePlayer() {
 
   // Scrimba UI Layout state
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showCaptions, setShowCaptions] = useState(true);
   const [showExplainModal, setShowExplainModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -407,8 +406,18 @@ export default function TimelineCodePlayer() {
   };
 
   const handleLoadedMetadata = () => {
-    if (mediaRef.current) {
-      setDuration(mediaRef.current.duration);
+    if (!mediaRef.current) return;
+    const dur = mediaRef.current.duration;
+    if (dur === Infinity || isNaN(dur) || dur <= 0) {
+      // Workaround for Chromium unindexed WebM media
+      mediaRef.current.currentTime = 1e101;
+      mediaRef.current.ontimeupdate = function () {
+        this.ontimeupdate = null;
+        this.currentTime = 0;
+        setDuration(this.duration || 0);
+      };
+    } else {
+      setDuration(dur);
     }
   };
 
@@ -477,6 +486,9 @@ export default function TimelineCodePlayer() {
   };
 
   const formatTime = (timeInSeconds) => {
+    if (!timeInSeconds || isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) {
+      return "00:00";
+    }
     const m = Math.floor(timeInSeconds / 60).toString().padStart(2, '0');
     const s = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
@@ -742,17 +754,6 @@ export default function TimelineCodePlayer() {
               </button>
             )}
 
-            {/* ── Synchronized Closed Captions Pill ── */}
-            {showCaptions && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none max-w-lg px-4 animate-in fade-in duration-150">
-                <div className="px-5 py-2 rounded-full bg-[#12141f]/95 border border-slate-700/60 shadow-2xl backdrop-blur-md text-slate-300 text-xs sm:text-sm font-medium tracking-wide flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <span>Interactive lesson code</span>
-                  <span className="text-white font-bold tracking-normal">synced with live timeline</span>
-                  <span>playback</span>
-                </div>
-              </div>
-            )}
-
             {/* Draggable Media Overlay (Picture-in-Picture style) */}
             {showVideo && mediaUrl && (
               <Draggable nodeRef={videoDragRef} bounds="parent" defaultPosition={{ x: window.innerWidth - 380, y: 20 }}>
@@ -816,13 +817,13 @@ export default function TimelineCodePlayer() {
           <div className="absolute inset-x-0 h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.7)] transition-all duration-75"
-              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+              style={{ width: `${isFinite(duration) && duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0}%` }}
             />
           </div>
           <input
             type="range"
             min="0"
-            max={duration || 100}
+            max={isFinite(duration) && duration > 0 ? duration : 100}
             step="0.1"
             value={currentTime}
             onChange={handleSliderChange}
@@ -867,16 +868,6 @@ export default function TimelineCodePlayer() {
                 <UndoDot className="w-3.5 h-3.5" /> Re-sync
               </button>
             )}
-
-            <button
-              onClick={() => setShowCaptions(!showCaptions)}
-              className={`px-2 py-0.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
-                showCaptions ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white bg-slate-800'
-              }`}
-              title={showCaptions ? 'Hide Subtitles' : 'Show Subtitles'}
-            >
-              CC
-            </button>
 
             <button
               onClick={toggleFullscreen}

@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import googleLogo from "../assets/googlelogo.png";
-import iosLogo from "../assets/ioslogo.png";
-import fbLogo from "../assets/fblogo.png";
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, ArrowRight, Chrome, Apple, Facebook, Loader2 } from 'lucide-react';
 import loginImage from "../assets/loginimage.png";
 import { supabase } from '../supabaseClient'; // Import Supabase client
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -86,28 +85,42 @@ const LoginPage = () => {
           <form onSubmit={handleLogin} className="space-y-6 z-10">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-slate-300">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 outline-none transition-all bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" />
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  required
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 outline-none transition-all bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-slate-300">Password</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 outline-none transition-all bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
-              />
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 outline-none transition-all bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-sm">
@@ -119,13 +132,24 @@ const LoginPage = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium">
-                {error}
+              <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
-            <button disabled={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
-              {loading ? 'Signing in...' : 'Sign In'}
+            <button disabled={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/30 dark:shadow-none hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </>
+              )}
             </button>
           </form>
 
@@ -141,23 +165,31 @@ const LoginPage = () => {
 
             <div className="flex justify-center gap-6 mt-6">
               {[
-                { icon: googleLogo, alt: "Google" },
-                { icon: iosLogo, alt: "Apple" },
-                { icon: fbLogo, alt: "Facebook" }
-              ].map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSocialLogin(item.alt)}
-                  className="p-3 rounded-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-all transform hover:-translate-y-1 hover:shadow-md dark:shadow-none"
-                >
-                  <img src={item.icon} alt={item.alt} className="w-6 h-6 object-contain" />
-                </button>
-              ))}
+                { icon: Chrome, alt: "Google", name: "Google" },
+                { icon: Apple, alt: "Apple", name: "Apple" },
+                { icon: Facebook, alt: "Facebook", name: "Facebook" }
+              ].map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleSocialLogin(item.name)}
+                    aria-label={`Sign in with ${item.name}`}
+                    className="p-3 rounded-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-all transform hover:-translate-y-1 hover:shadow-md dark:shadow-none text-gray-700 dark:text-slate-200"
+                  >
+                    <Icon className="w-5 h-5" />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <p className="mt-8 text-center text-sm text-gray-600 dark:text-slate-400 z-10 font-medium">
-            Don't have an account? <Link to="/register" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1">Sign up</Link>
+            Don't have an account?{' '}
+            <Link to="/register" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline inline-flex items-center gap-1 ml-1">
+              Sign up <ArrowRight className="w-3.5 h-3.5 inline" />
+            </Link>
           </p>
         </div>
 

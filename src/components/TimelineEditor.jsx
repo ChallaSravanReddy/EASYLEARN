@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, Pause, Save, Upload, Video as VideoIcon, CheckCircle2, ChevronLeft, Mic, StopCircle, Download, FileJson, PlaySquare, ChevronRight, ChevronDown, FilePlus, FolderPlus, X, FileAudio } from 'lucide-react';
 import Draggable from 'react-draggable';
+import fixWebmDuration from 'fix-webm-duration';
 
 const INITIAL_FILES = [
   { id: '1', name: 'main.js', language: 'javascript', isFolder: false, parentId: null, content: '// Welcome to Instructor Studio!\n' },
@@ -159,23 +160,52 @@ export default function TimelineEditor() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); // Audio only for now
-      
-      const mediaRecorder = new MediaRecorder(stream);
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+          },
+          video: false,
+        });
+      } catch (e) {
+        console.warn('Ideal audio constraints failed, using fallback:', e);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      }
+
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'].find(
+        (m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m)
+      ) || '';
+
+      const recorderOptions = mimeType ? { mimeType, audioBitsPerSecond: 128000 } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        if (e.data && e.data.size > 0) {
           recordedChunksRef.current.push(e.data);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+      mediaRecorder.onstop = async () => {
+        const mime = mimeType || 'audio/webm';
+        let blob = new Blob(recordedChunksRef.current, { type: mime });
+        const durationMs = Date.now() - (startTimeRef.current || Date.now());
+
+        if (mime.includes('webm') && typeof fixWebmDuration === 'function' && durationMs > 0) {
+          try {
+            blob = await fixWebmDuration(blob, durationMs);
+          } catch (fixErr) {
+            console.warn('Could not patch WebM duration header:', fixErr);
+          }
+        }
+
         const url = URL.createObjectURL(blob);
         setMediaUrl(url);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       // Reset Timeline
@@ -187,14 +217,15 @@ export default function TimelineEditor() {
         setRecordingTime((Date.now() - startTimeRef.current) / 1000);
       }, 100);
 
-      mediaRecorder.start();
+      // Start with 250ms chunks to ensure continuous audio streaming
+      mediaRecorder.start(250);
       setIsRecording(true);
       setMediaUrl(''); // Clear previous recording
       setShowVideo(false);
 
     } catch (err) {
       console.error("Failed to start recording:", err);
-      alert("Could not access microphone. Please ensure permissions are granted.");
+      alert("Could not access microphone. Please ensure microphone permissions are granted in your browser settings.");
     }
   };
 
@@ -253,6 +284,9 @@ export default function TimelineEditor() {
   };
 
   const formatTime = (timeInSeconds) => {
+    if (!timeInSeconds || isNaN(timeInSeconds) || !isFinite(timeInSeconds)) {
+      return "00:00";
+    }
     const m = Math.floor(timeInSeconds / 60).toString().padStart(2, '0');
     const s = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;

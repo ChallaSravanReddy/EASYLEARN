@@ -20,6 +20,7 @@
     "codemirror": "^6.0.2",
     "dompurify": "^3.2.6",
     "firebase": "^12.2.1",
+    "fix-webm-duration": "^1.0.6",
     "framer-motion": "^12.23.12",
     "idb": "^8.0.3",
     "lucide-react": "^0.542.0",

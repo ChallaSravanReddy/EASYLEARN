@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import fixWebmDuration from 'fix-webm-duration';
 import type {
   UseScrimRecorderOptions,
   RecordingStatus,
@@ -436,22 +437,26 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     setKeyframeCount(0);
     setElapsedTime(0);
 
-    // 1. Audio stream acquisition with noise suppression & echo cancellation
+    // 1. Audio stream acquisition with graceful fallback
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 48000,
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
         },
       });
       mediaStreamRef.current = stream;
     } catch (err: any) {
-      console.error('[useScrimRecorder] Microphone access denied or unavailable:', err);
-      throw new Error(`Microphone access failed: ${err.message || 'Permission denied'}`);
+      console.warn('[useScrimRecorder] Ideal microphone constraints failed, attempting fallback:', err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
+      } catch (fallbackErr: any) {
+        console.error('[useScrimRecorder] Microphone access denied or unavailable:', fallbackErr);
+        throw new Error(`Microphone access failed: ${fallbackErr.message || 'Permission denied'}`);
+      }
     }
 
     // 2. Select MIME type & configure high-bitrate Opus recorder
@@ -490,8 +495,8 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     statusRef.current = 'recording';
     setStatus('recording');
 
-    // 5. Start MediaRecorder with 1000ms chunks
-    mediaRecorder.start(audioChunkIntervalMs);
+    // 5. Start MediaRecorder with continuous 250ms chunks to prevent chunk loss
+    mediaRecorder.start(Math.min(audioChunkIntervalMs || 250, 250));
 
     // 6. Capture initial keyframe at t = 0
     captureKeyframe(0);
@@ -580,8 +585,8 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
 
       const recorder = mediaRecorderRef.current;
 
-      const finalize = () => {
-        // Stop audio tracks
+      const finalize = async () => {
+        // Stop audio tracks after recorder has finished capturing
         if (mediaStreamRef.current) {
           mediaStreamRef.current.getTracks().forEach((track) => track.stop());
           mediaStreamRef.current = null;
@@ -589,7 +594,16 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
 
         const mime = resolvedMimeTypeRef.current || recorder?.mimeType || 'audio/webm';
         const validChunks = audioChunksRef.current.filter((c) => c && c.size > 0);
-        const audioBlob = new Blob(validChunks, { type: mime });
+        let audioBlob = new Blob(validChunks, { type: mime });
+
+        // Fix missing WebM duration header so browser can seek, display accurate duration, and calculate progress
+        if (mime.includes('webm') && typeof fixWebmDuration === 'function' && finalDuration > 0) {
+          try {
+            audioBlob = await fixWebmDuration(audioBlob, finalDuration);
+          } catch (fixErr) {
+            console.warn('[useScrimRecorder] Could not fix WebM duration header:', fixErr);
+          }
+        }
 
         const manifest: ScrimManifest = {
           version: '1.0.0',
@@ -621,11 +635,11 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
       };
 
       if (recorder && recorder.state !== 'inactive') {
-        recorder.onstop = finalize;
+        recorder.onstop = () => {
+          // Allow microtask queue to process any final ondataavailable chunk
+          setTimeout(finalize, 50);
+        };
         try {
-          if (recorder.state === 'recording') {
-            recorder.requestData(); // Flush all pending chunks
-          }
           recorder.stop();
         } catch (e) {
           finalize();
