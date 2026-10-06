@@ -54,6 +54,12 @@ import {
   Copy,
   Split,
   Maximize,
+  Bookmark,
+  MessageSquare,
+  ThumbsUp,
+  Send,
+  Clock,
+  Share2,
 } from 'lucide-react';
 import { useScrimPlayer } from '../hooks/useScrimPlayer';
 import { DEMO_SCRIM_MANIFEST, generateSyntheticAudioDataUri } from '../utils/demoScrim';
@@ -61,6 +67,11 @@ import type { ScrimManifest, ScrimChallenge, ScrimCaption } from '../types/scrim
 import CodePreviewIframe from './CodePreviewIframe';
 import ScrimbaFileIcon from './ScrimbaFileIcon';
 import { fetchPublishedScrim } from '../services/scrimUploadService';
+import { scrimForkService, ScrimForkRecord } from '../services/scrimForkService';
+import { scrimNotesService, ScrimNoteRecord } from '../services/scrimNotesService';
+import { scrimDiscussionService, ScrimDiscussionRecord } from '../services/scrimDiscussionService';
+import { aiExplainerService, AiExplanationResult } from '../services/aiExplainerService';
+import { scrimTelemetryService, HeatmapBucket } from '../services/scrimTelemetryService';
 import {
   runChallengeValidation,
   playCelebrationChime,
@@ -118,7 +129,19 @@ export default function ScrimPlayerView() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showInitialOverlay, setShowInitialOverlay] = useState<boolean>(true);
   const [bottomDrawerOpen, setBottomDrawerOpen] = useState<boolean>(false);
-  const [activeBottomTab, setActiveBottomTab] = useState<'runner' | 'console'>('runner');
+  const [activeBottomTab, setActiveBottomTab] = useState<'runner' | 'console' | 'notes' | 'discussions'>('runner');
+
+  // Scrimba Backend Infrastructure States
+  const [heatmapBuckets, setHeatmapBuckets] = useState<HeatmapBucket[]>([]);
+  const [studentNotes, setStudentNotes] = useState<ScrimNoteRecord[]>([]);
+  const [newNoteText, setNewNoteText] = useState<string>('');
+  const [newNoteColor, setNewNoteColor] = useState<'amber' | 'sky' | 'emerald' | 'purple' | 'rose'>('amber');
+  const [discussions, setDiscussions] = useState<ScrimDiscussionRecord[]>([]);
+  const [newQuestionText, setNewQuestionText] = useState<string>('');
+  const [newQuestionTitle, setNewQuestionTitle] = useState<string>('');
+  const [aiExplanation, setAiExplanation] = useState<AiExplanationResult | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [forkNotification, setForkNotification] = useState<string | null>(null);
 
   const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -333,6 +356,110 @@ export default function ScrimPlayerView() {
     } finally {
       setIsTesting(false);
     }
+  };
+
+  // Telemetry, Notes, Discussions, and Heatmap Sync
+  useEffect(() => {
+    const scrimKey = scrimId || manifest.metadata.title;
+    scrimTelemetryService.getHeatmap(scrimKey, durationMs || 25000).then((b) => {
+      setHeatmapBuckets(b);
+    });
+  }, [scrimId, manifest.metadata.title, durationMs]);
+
+  useEffect(() => {
+    const scrimKey = scrimId || 'class-js-launchpad';
+    scrimNotesService.getNotesForScrim(scrimKey).then(setStudentNotes);
+    scrimDiscussionService.getDiscussions(scrimKey).then(setDiscussions);
+  }, [scrimId]);
+
+  useEffect(() => {
+    if (showExplainModal) {
+      setAiLoading(true);
+      const scrimKey = scrimId || manifest.metadata.title;
+      aiExplainerService
+        .explainCode({
+          scrimId: scrimKey,
+          fileName: activeFile,
+          code: files[activeFile] || '',
+          timestampMs: currentTimeMs,
+        })
+        .then((res) => {
+          setAiExplanation(res);
+          setAiLoading(false);
+        })
+        .catch(() => {
+          setAiLoading(false);
+        });
+    }
+  }, [showExplainModal, scrimId, manifest.metadata.title, activeFile, files, currentTimeMs]);
+
+  useEffect(() => {
+    const scrimKey = scrimId || manifest.metadata.title;
+    scrimTelemetryService.track({
+      scrimId: scrimKey,
+      eventType: isPlaying ? 'play' : 'pause',
+      timestampMs: currentTimeMs,
+      playbackSpeed,
+    });
+  }, [isPlaying, scrimId, manifest.metadata.title, currentTimeMs, playbackSpeed]);
+
+  const handleSaveFork = async () => {
+    try {
+      const fork = await scrimForkService.createFork({
+        parentScrimId: scrimId || 'class-js-launchpad',
+        forkedAtMs: currentTimeMs,
+        title: `${manifest.metadata.title} (Fork @ ${formatSimpleTime(currentTimeMs)})`,
+        files,
+        activeFile,
+      });
+      const shareUrl = `${window.location.origin}/course/javascript/introduction?fork=${fork.share_slug}`;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch (_) {}
+      setForkNotification(`Fork saved! Share link copied: ${shareUrl}`);
+      setTimeout(() => setForkNotification(null), 5000);
+    } catch (err) {
+      console.error('Failed to create fork:', err);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!newNoteText.trim()) return;
+    const note = await scrimNotesService.saveNote({
+      scrimId: scrimId || 'class-js-launchpad',
+      timestampMs: currentTimeMs,
+      filePath: activeFile,
+      noteText: newNoteText.trim(),
+      colorTag: newNoteColor,
+    });
+    setStudentNotes((prev) => [...prev, note].sort((a, b) => a.timestamp_ms - b.timestamp_ms));
+    setNewNoteText('');
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    await scrimNotesService.deleteNote(noteId);
+    setStudentNotes((prev) => prev.filter((n) => n.id !== noteId));
+  };
+
+  const handlePostDiscussion = async () => {
+    if (!newQuestionText.trim()) return;
+    const disc = await scrimDiscussionService.postDiscussion({
+      scrimId: scrimId || 'class-js-launchpad',
+      timestampMs: currentTimeMs,
+      filePath: activeFile,
+      title: newQuestionTitle.trim() || undefined,
+      content: newQuestionText.trim(),
+    });
+    setDiscussions((prev) => [disc, ...prev]);
+    setNewQuestionText('');
+    setNewQuestionTitle('');
+  };
+
+  const handleUpvoteDiscussion = async (discId: string) => {
+    const count = await scrimDiscussionService.upvote(discId);
+    setDiscussions((prev) =>
+      prev.map((d) => (d.id === discId ? { ...d, upvotes_count: count } : d))
+    );
   };
 
   // Attach audio element reference to hook
@@ -732,9 +859,17 @@ export default function ScrimPlayerView() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 <span className="font-semibold text-white">Student Edit Mode</span>
-                <span className="text-slate-400 text-[11px] hidden md:inline">— Code modified. Click ▶ to resume or revert</span>
+                <span className="text-slate-400 text-[11px] hidden md:inline">— Code modified. Click ▶ to resume, or save as a fork</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveFork}
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold cursor-pointer transition-colors"
+                  title="Fork lesson into your personal copy"
+                >
+                  <GitFork className="w-3 h-3" />
+                  <span>Save as Fork</span>
+                </button>
                 <button
                   onClick={revertToInstructor}
                   className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 text-[11px] font-medium cursor-pointer transition-colors"
@@ -752,6 +887,22 @@ export default function ScrimPlayerView() {
                   <span>Resume</span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Fork Notification Banner */}
+          {forkNotification && (
+            <div className="px-3 py-1.5 bg-emerald-950/90 border-b border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between shrink-0 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-semibold text-white truncate max-w-xl">{forkNotification}</span>
+              </div>
+              <button
+                onClick={() => setForkNotification(null)}
+                className="text-emerald-400 hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
           )}
 
@@ -1080,7 +1231,7 @@ export default function ScrimPlayerView() {
             )}
           </div>
 
-          {/* ── Scrimba Bottom Runner / Console Drawer Tabs ── */}
+          {/* ── Scrimba Bottom Runner / Console / Notes / Discussions Drawer Tabs ── */}
           <div className="h-7 bg-[#0e1017] border-t border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none text-xs">
             <div className="flex items-center gap-2">
               <button
@@ -1110,11 +1261,32 @@ export default function ScrimPlayerView() {
                 <span>≡ Console</span>
               </button>
               <button
-                onClick={() => setBottomDrawerOpen(!bottomDrawerOpen)}
-                className="p-1 rounded text-slate-500 hover:text-slate-300 cursor-pointer"
-                title="Toggle bottom drawer"
+                onClick={() => {
+                  setActiveBottomTab('notes');
+                  setBottomDrawerOpen(bottomDrawerOpen && activeBottomTab === 'notes' ? false : true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                  bottomDrawerOpen && activeBottomTab === 'notes'
+                    ? 'bg-slate-800 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
-                <Plus className="w-3 h-3" />
+                <Bookmark className="w-3 h-3 text-amber-400" />
+                <span>Notes ({studentNotes.length})</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveBottomTab('discussions');
+                  setBottomDrawerOpen(bottomDrawerOpen && activeBottomTab === 'discussions' ? false : true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                  bottomDrawerOpen && activeBottomTab === 'discussions'
+                    ? 'bg-slate-800 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <MessageSquare className="w-3 h-3 text-sky-400" />
+                <span>Q&A ({discussions.length})</span>
               </button>
             </div>
 
@@ -1129,8 +1301,8 @@ export default function ScrimPlayerView() {
 
           {/* Drawer Body */}
           {bottomDrawerOpen && (
-            <div className="h-32 bg-[#0a0c12] border-t border-slate-800/80 p-3 font-mono text-xs overflow-y-auto shrink-0 select-text animate-in slide-in-from-bottom-2 duration-150">
-              {activeBottomTab === 'runner' ? (
+            <div className="h-40 bg-[#0a0c12] border-t border-slate-800/80 p-3 font-mono text-xs overflow-y-auto shrink-0 select-text animate-in slide-in-from-bottom-2 duration-150">
+              {activeBottomTab === 'runner' && (
                 <div className="space-y-1">
                   <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1141,13 +1313,167 @@ export default function ScrimPlayerView() {
                     ✓ Code evaluated without syntax violations
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {activeBottomTab === 'console' && (
                 <div className="space-y-1 text-slate-300 text-[11px]">
                   <div className="text-slate-500">[system] Devtools console attached to live preview</div>
                   <div className="text-slate-400">&gt; Live output streaming from index.js...</div>
                   {isStudentModified && (
                     <div className="text-amber-400">[info] Student code recompiled in real-time</div>
                   )}
+                </div>
+              )}
+
+              {activeBottomTab === 'notes' && (
+                <div className="space-y-3 font-sans">
+                  {/* Create note bar */}
+                  <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-2 rounded-xl">
+                    <span className="text-[11px] font-mono text-amber-400 font-semibold px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 shrink-0">
+                      {formatSimpleTime(currentTimeMs)}
+                    </span>
+                    <input
+                      type="text"
+                      value={newNoteText}
+                      onChange={(e) => setNewNoteText(e.target.value)}
+                      placeholder={`Add timestamped note for ${activeFile}...`}
+                      className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveNote()}
+                    />
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(['amber', 'sky', 'emerald', 'purple', 'rose'] as const).map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setNewNoteColor(color)}
+                          className={`w-3.5 h-3.5 rounded-full border transition-all ${
+                            color === 'amber'
+                              ? 'bg-amber-400 border-amber-300'
+                              : color === 'sky'
+                              ? 'bg-sky-400 border-sky-300'
+                              : color === 'emerald'
+                              ? 'bg-emerald-400 border-emerald-300'
+                              : color === 'purple'
+                              ? 'bg-purple-400 border-purple-300'
+                              : 'bg-rose-400 border-rose-300'
+                          } ${newNoteColor === color ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleSaveNote}
+                      disabled={!newNoteText.trim()}
+                      className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      Save Note
+                    </button>
+                  </div>
+
+                  {/* Notes list */}
+                  <div className="space-y-1.5">
+                    {studentNotes.length === 0 ? (
+                      <div className="text-slate-500 text-xs py-2 text-center">
+                        No notes yet. Type above to bookmark a key moment!
+                      </div>
+                    ) : (
+                      studentNotes.map((note) => (
+                        <div
+                          key={note.id}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 transition-colors group text-xs"
+                        >
+                          <div
+                            onClick={() => {
+                              seekTo(note.timestamp_ms);
+                              if (note.file_path && files[note.file_path]) selectFile(note.file_path);
+                            }}
+                            className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
+                          >
+                            <span className="font-mono text-[11px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                              {formatSimpleTime(note.timestamp_ms)}
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-400">[{note.file_path}]</span>
+                            <span className="text-slate-200 truncate">{note.note_text}</span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-slate-500 hover:text-rose-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete note"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeBottomTab === 'discussions' && (
+                <div className="space-y-3 font-sans">
+                  {/* Post question form */}
+                  <div className="flex flex-col sm:flex-row gap-2 bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="text"
+                        value={newQuestionTitle}
+                        onChange={(e) => setNewQuestionTitle(e.target.value)}
+                        placeholder="Question title (e.g. Why use let here?)..."
+                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={newQuestionText}
+                        onChange={(e) => setNewQuestionText(e.target.value)}
+                        placeholder={`Details or context for ${activeFile} @ ${formatSimpleTime(currentTimeMs)}...`}
+                        className="w-full bg-transparent text-xs text-slate-300 placeholder-slate-500 focus:outline-none"
+                        onKeyDown={(e) => e.key === 'Enter' && handlePostDiscussion()}
+                      />
+                    </div>
+                    <button
+                      onClick={handlePostDiscussion}
+                      disabled={!newQuestionText.trim()}
+                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>Ask Community</span>
+                    </button>
+                  </div>
+
+                  {/* Thread list */}
+                  <div className="space-y-2">
+                    {discussions.map((d) => (
+                      <div
+                        key={d.id}
+                        className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white">{d.user_name}</span>
+                            <span
+                              onClick={() => seekTo(d.timestamp_ms)}
+                              className="font-mono text-[10px] text-sky-400 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-500/20 cursor-pointer hover:underline"
+                            >
+                              @{formatSimpleTime(d.timestamp_ms)}
+                            </span>
+                            {d.is_instructor_answered && (
+                              <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold">
+                                Instructor Answered
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleUpvoteDiscussion(d.id)}
+                            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors"
+                          >
+                            <ThumbsUp className="w-3 h-3" />
+                            <span>{d.upvotes_count}</span>
+                          </button>
+                        </div>
+                        {d.title && <div className="font-semibold text-slate-200">{d.title}</div>}
+                        <p className="text-slate-300 text-[11px] leading-relaxed">{d.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1257,6 +1583,17 @@ export default function ScrimPlayerView() {
             }}
             onMouseLeave={() => setHoverTimeMs(null)}
           >
+            {/* Scrimba Telemetry Engagement Heatmap Waveform */}
+            <div className="absolute inset-x-0 bottom-2.5 h-3 flex items-end gap-[1px] pointer-events-none opacity-40">
+              {heatmapBuckets.map((bucket, bIdx) => (
+                <div
+                  key={bIdx}
+                  className="flex-1 bg-gradient-to-t from-blue-500/70 to-indigo-400/90 rounded-t-[1px]"
+                  style={{ height: `${Math.round(bucket.intensity * 100)}%` }}
+                />
+              ))}
+            </div>
+
             {/* Background Track */}
             <div className="absolute inset-x-0 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               {/* Scrimba Blue Progress Fill */}
@@ -1466,7 +1803,7 @@ export default function ScrimPlayerView() {
                   <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                     AI Code Explainer
                     <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-mono font-bold">
-                      Interactive Tutor
+                      {aiExplanation?.isCached ? 'Cached O(1)' : 'Interactive Tutor'}
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-400 font-mono">
@@ -1482,34 +1819,82 @@ export default function ScrimPlayerView() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-blue-300 overflow-x-auto">
-                <code>let name = &quot;Guil Hernandez&quot;;</code>
-                <br />
-                <code>let favoriteActivity = &quot;snacking&quot;;</code>
-                <br />
-                <code>generateTextAndImage(name, favoriteActivity, favoritePlace, temperature);</code>
+            {aiLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+                <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                <span className="text-xs font-mono">Analyzing code context & syntax tree...</span>
               </div>
+            ) : (
+              <div className="space-y-3.5 text-xs leading-relaxed text-slate-300">
+                {/* High Level Summary */}
+                <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 text-slate-200 text-xs">
+                  <p className="font-medium leading-relaxed">{aiExplanation?.summary}</p>
+                </div>
 
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Explanation & Concepts:
-                </h4>
-                <ul className="space-y-1.5 list-disc pl-4 text-slate-300">
-                  <li>
-                    <strong className="text-white font-mono">let</strong>: Declares a block-scoped variable in modern JavaScript that can be reassigned later.
-                  </li>
-                  <li>
-                    <strong className="text-white font-mono">temperature</strong>: Controls AI generation creativity (0.0 means consistent and focused, 1.0 means creative and playful).
-                  </li>
-                  <li>
-                    <strong className="text-white font-mono">generateTextAndImage</strong>: Passes user parameters into an AI text & image generator to render the interactive greeting card!
-                  </li>
-                </ul>
+                {/* Concepts list */}
+                {aiExplanation?.concepts && aiExplanation.concepts.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Core Concepts:
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {aiExplanation.concepts.map((c, i) => (
+                        <div key={i} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                          <span className="font-bold text-blue-300 font-mono text-[11px]">{c.term}</span>
+                          <p className="text-[11px] text-slate-400 leading-snug">{c.explanation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Line by Line Breakdown */}
+                {aiExplanation?.lineByLine && aiExplanation.lineByLine.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Line-by-Line Breakdown:
+                    </h4>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {aiExplanation.lineByLine.map((l, i) => (
+                        <div key={i} className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 font-mono text-[11px]">
+                          <span className="text-blue-400 font-bold mr-2">L{l.line}:</span>
+                          <span className="text-slate-300 font-semibold">{l.code}</span>
+                          <p className="font-sans text-[11px] text-slate-400 mt-0.5">{l.explanation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Experiment Prompt */}
+                {aiExplanation?.experimentPrompt && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-white block">Try this experiment:</span>
+                      <span className="text-[11px] text-slate-300">{aiExplanation.experimentPrompt}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-end pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <button
+                onClick={() => {
+                  if (aiExplanation) {
+                    navigator.clipboard.writeText(
+                      `${aiExplanation.summary}\n\nConcepts:\n${aiExplanation.concepts.map((c) => `- ${c.term}: ${c.explanation}`).join('\n')}`
+                    );
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedLink ? 'Copied!' : 'Copy Explanation'}</span>
+              </button>
               <button
                 onClick={() => setShowExplainModal(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer shadow-md shadow-blue-600/30"

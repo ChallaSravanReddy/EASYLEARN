@@ -829,6 +829,14 @@ export const scrimDatabase = {
   },
 
   /**
+   * Retrieves all recorded classes belonging to a specific course ID.
+   */
+  async getClassesByCourse(courseId: string): Promise<RecordedClass[]> {
+    const allClasses = await this.getAllClasses();
+    return allClasses.filter((c) => c.course_id === courseId);
+  },
+
+  /**
    * Retrieves a single recorded class by its ID
    */
   async getClassById(id: string): Promise<RecordedClass | null> {
