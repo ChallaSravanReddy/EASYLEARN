@@ -20,6 +20,7 @@ import TimelineEditor from "./components/TimelineEditor";
 import InstructorDashboard from "./components/InstructorDashboard";
 import RecordingStudio from "./components/RecordingStudio";
 import ScrimPlayerView from "./components/ScrimPlayerView";
+import PricingPage from "./components/PricingPage";
 import WebChat from "./components/WebChat";
 
 import "./App.css";
@@ -54,6 +55,7 @@ function Layout() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/Profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/course/:courseName" element={<CourseSyllabus />} />
             <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
             

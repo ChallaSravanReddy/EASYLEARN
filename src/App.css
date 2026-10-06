@@ -46,9 +46,20 @@ body,
   background: #475569; /* slate-600 */
 }
 
-/* Sidebar overlap fix */
+/* Authentic Scrimba background palette */
+body {
+  background-color: #f3f5f8;
+  color: #0f172a;
+}
+
+html.dark body {
+  background-color: #0c0d14;
+  color: #f8fafc;
+}
+
+/* Sidebar overlap fix (w-56 = 224px) */
 @media (min-width: 768px) {
   .main-content-shifted {
-    margin-left: 256px;
+    margin-left: 224px;
   }
 }
