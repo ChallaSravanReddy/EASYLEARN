@@ -27,6 +27,9 @@ import {
   VolumeX,
   ExternalLink,
   Columns2,
+  Monitor,
+  Tablet,
+  Smartphone,
 } from 'lucide-react';
 import type {
   CodePreviewIframeProps,
@@ -50,7 +53,7 @@ export default function CodePreviewIframe({
   title = 'localhost:3000',
   isFloating = false,
   defaultPosition = { right: 16, top: 12 },
-  defaultSize = { width: 360, height: 270 },
+  defaultSize = { width: 440, height: 320 },
   onClose,
   onDock,
   initialUrl = 'http://localhost:3000/',
@@ -62,6 +65,9 @@ export default function CodePreviewIframe({
   const consoleBottomRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef<number>(0);
   const urlInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Responsive device viewport preview mode ('desktop' | 'tablet' | 'mobile')
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
 
   // Floating Window & Resizing State
   const [position, setPosition] = useState<{ x: number; y: number }>({
@@ -532,8 +538,10 @@ export default function CodePreviewIframe({
     <div
       ref={containerRef}
       style={floatingStyle}
-      className={`flex flex-col bg-[#141622] text-slate-100 border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl select-none relative ${
-        isFloating ? 'transition-shadow' : 'h-full w-full'
+      className={`flex flex-col bg-[#141622] text-slate-100 select-none relative ${
+        isFloating
+          ? 'border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl transition-shadow'
+          : 'h-full w-full rounded-none border-0 shadow-none overflow-hidden'
       } ${className}`}
     >
       {/* ── 1. REALISTIC BROWSER TOP TAB BAR (macOS / Chrome Style) ── */}
@@ -725,6 +733,40 @@ export default function CodePreviewIframe({
               </div>
             </div>
 
+            {/* Responsive Viewport Switcher (Desktop, Tablet, Mobile) */}
+            <div className="hidden sm:flex items-center bg-[#10121b] rounded-lg p-0.5 border border-slate-700/60 mr-1" data-no-drag="true">
+              <button
+                type="button"
+                onClick={() => setDeviceMode('desktop')}
+                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                  deviceMode === 'desktop' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Desktop View (100%)"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceMode('tablet')}
+                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                  deviceMode === 'tablet' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Tablet View (768px)"
+              >
+                <Tablet className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceMode('mobile')}
+                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                  deviceMode === 'mobile' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Mobile View (375px)"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Action Icons on Far Right */}
             <div className="flex items-center gap-1 pr-1 relative" data-no-drag="true">
               {/* Extensions Placeholder */}
@@ -808,7 +850,7 @@ export default function CodePreviewIframe({
           </div>
 
           {/* ── 3. CLEAN FULL-BLEED IFRAME CONTAINER ── */}
-          <div className="flex-1 relative bg-white overflow-hidden min-h-0">
+          <div className="flex-1 relative bg-[#0a0c14] overflow-hidden min-h-0 flex items-center justify-center p-0">
             {/*
               CRITICAL: When dragging or resizing, the transparent overlay covers the entire
               frame to prevent the iframe from intercepting mousemove / mouseup events.
@@ -817,15 +859,25 @@ export default function CodePreviewIframe({
               <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing select-none" />
             )}
 
-            <iframe
-              ref={iframeRef}
-              title={title || parsedDomain}
-              sandbox="allow-scripts allow-modals"
-              srcDoc={bundledHtml}
-              className={`w-full h-full border-0 bg-white ${
-                isDragging || isResizing ? 'pointer-events-none' : ''
+            <div
+              className={`h-full transition-all duration-200 relative bg-white ${
+                deviceMode === 'mobile'
+                  ? 'w-[375px] max-w-full shadow-2xl border-x border-slate-700/60'
+                  : deviceMode === 'tablet'
+                  ? 'w-[768px] max-w-full shadow-2xl border-x border-slate-700/60'
+                  : 'w-full'
               }`}
-            />
+            >
+              <iframe
+                ref={iframeRef}
+                title={title || parsedDomain}
+                sandbox="allow-scripts allow-modals"
+                srcDoc={bundledHtml}
+                className={`w-full h-full border-0 bg-white ${
+                  isDragging || isResizing ? 'pointer-events-none' : ''
+                }`}
+              />
+            </div>
 
             {/* Error Overlay Toast (Aw, Snap! Style) */}
             {currentError && (

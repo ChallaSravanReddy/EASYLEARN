@@ -42,12 +42,12 @@ function Layout() {
   const showWebChat = location.pathname.startsWith("/lesson/") || location.pathname === "/course/javascript/introduction";
 
   return (
-    <div className="flex min-h-screen bg-transparent">
+    <div className={`flex bg-transparent ${hideLayout ? 'h-screen h-[100vh] overflow-hidden' : 'min-h-screen'}`}>
       {!hideLayout && <Sidebar />}
       {/* Explicit margin-left is required because Sidebar is fixed */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'main-content-shifted' : ''}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${!hideLayout ? 'main-content-shifted' : 'h-full overflow-hidden'}`}>
         {!hideLayout && <Navbar />}
-        <main className={`flex-1 w-full overflow-x-hidden ${hideLayout ? 'p-0 h-screen overflow-hidden' : 'p-6 md:p-10 pb-8'}`}>
+        <main className={`flex-1 w-full ${hideLayout ? 'p-0 h-full overflow-hidden' : 'overflow-x-hidden p-6 md:p-10 pb-8'}`}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />

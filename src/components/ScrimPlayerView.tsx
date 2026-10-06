@@ -105,11 +105,38 @@ export default function ScrimPlayerView() {
 
   // Scrimba UI Layout state (matching reference screenshot)
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
-  const [previewMode, setPreviewMode] = useState<'pip' | 'split' | 'hidden'>('pip');
+  const [previewMode, setPreviewMode] = useState<'pip' | 'split' | 'hidden'>('split');
+  const [splitRatio, setSplitRatio] = useState<number>(50);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState<boolean>(false);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const [hoverTimeMs, setHoverTimeMs] = useState<{ ms: number; pct: number } | null>(null);
   const [showCaptions, setShowCaptions] = useState<boolean>(true);
   const [showConceptSlide, setShowConceptSlide] = useState<boolean>(true);
   const [showExplainModal, setShowExplainModal] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSplitter(true);
+    const container = workspaceRef.current;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = moveEvent.clientX - containerRect.left;
+      const newRatio = Math.max(25, Math.min(75, (newWidth / containerRect.width) * 100));
+      setSplitRatio(newRatio);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSplitter(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -585,7 +612,7 @@ export default function ScrimPlayerView() {
       </header>
 
       {/* ── Main Workspace ── */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative bg-[#0c0d14]">
+      <div ref={workspaceRef} className="flex-1 flex overflow-hidden min-h-0 relative bg-[#0c0d14]">
         {/* Left: Collapsible Scrimba FILES Sidebar */}
         {sidebarOpen && (
           <div className="w-48 sm:w-52 bg-[#0d0f17] border-r border-slate-800/80 flex flex-col shrink-0 select-none">
@@ -663,7 +690,13 @@ export default function ScrimPlayerView() {
         )}
 
         {/* Center: Code Editor Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
+        <div
+          style={{
+            width: previewMode === 'split' ? `${splitRatio}%` : '100%',
+            flex: previewMode === 'split' ? 'none' : '1',
+          }}
+          className="flex flex-col min-w-0 bg-[#0c0d14] relative h-full transition-[width] duration-75"
+        >
           {/* Active File Tab Bar */}
           <div className="h-8 bg-[#0e1017] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none">
             <div className="flex items-center gap-2">
@@ -685,6 +718,35 @@ export default function ScrimPlayerView() {
               )}
             </div>
           </div>
+
+          {/* Student Edit Mode Pill Banner */}
+          {isStudentModified && (
+            <div className="flex items-center justify-between px-3 py-1 bg-amber-500/10 border-b border-amber-500/20 text-amber-300 text-xs select-none shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="font-semibold text-white">Student Edit Mode</span>
+                <span className="text-slate-400 text-[11px] hidden md:inline">— Code modified. Click ▶ to resume or revert</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={revertToInstructor}
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 text-[11px] font-medium cursor-pointer transition-colors"
+                  title="Revert back to instructor code stream"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Revert Code</span>
+                </button>
+                <button
+                  onClick={play}
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold cursor-pointer shadow-sm transition-colors"
+                  title="Resume lesson with your changes"
+                >
+                  <Play className="w-3 h-3 fill-white" />
+                  <span>Resume</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Monaco Editor Container with Overlay */}
           <div
@@ -754,7 +816,7 @@ export default function ScrimPlayerView() {
             )}
 
             {/* ── Large Semi-Transparent Center Blue Play Button (Scrimba Signature) ── */}
-            {!isPlaying && (!activeChallenge || !showChallengeModal) && (
+            {!isPlaying && !isStudentModified && (!activeChallenge || !showChallengeModal) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1004,9 +1066,27 @@ export default function ScrimPlayerView() {
           </div>
         </div>
 
-        {/* Right: Docked Split View Sandbox Preview (300px width in full size window) */}
+        {/* Resizable Splitter Handle */}
         {previewMode === 'split' && (
-          <div className="w-[300px] flex flex-col border-l border-slate-800 bg-slate-900 shrink-0">
+          <div
+            onMouseDown={handleSplitterMouseDown}
+            onDoubleClick={() => setSplitRatio(50)}
+            className="w-1.5 hover:w-2 bg-[#10121d] hover:bg-blue-600 active:bg-blue-500 cursor-col-resize transition-all shrink-0 z-20 flex items-center justify-center group select-none border-x border-slate-800/80"
+            title="Drag to resize split view (Double-click to reset 50/50)"
+          >
+            <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />
+          </div>
+        )}
+
+        {/* Right: Docked Split View Sandbox Preview */}
+        {previewMode === 'split' && (
+          <div
+            style={{ width: `${100 - splitRatio}%` }}
+            className="flex flex-col border-l border-slate-800/80 bg-[#0c0d14] shrink-0 h-full min-w-[320px] relative overflow-hidden"
+          >
+            {isDraggingSplitter && (
+              <div className="absolute inset-0 z-50 bg-transparent select-none cursor-col-resize" />
+            )}
             <CodePreviewIframe
               files={files}
               entryFile="index.html"
@@ -1024,7 +1104,19 @@ export default function ScrimPlayerView() {
       <footer className="bg-[#12141f] border-t border-slate-800/80 px-4 py-2.5 flex flex-col gap-1.5 shrink-0 select-none z-20">
         {/* Keyframe-Assisted Timeline Scrubber with Scrimba Electric Blue */}
         <div className="relative flex flex-col gap-1">
-          <div className="relative flex items-center h-5 group">
+          <div
+            className="relative flex items-center h-5 group"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              if (rect.width > 0 && durationMs > 0) {
+                const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                const pct = (x / rect.width) * 100;
+                const ms = (pct / 100) * durationMs;
+                setHoverTimeMs({ ms, pct });
+              }
+            }}
+            onMouseLeave={() => setHoverTimeMs(null)}
+          >
             {/* Background Track */}
             <div className="absolute inset-x-0 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               {/* Scrimba Blue Progress Fill */}
@@ -1096,8 +1188,18 @@ export default function ScrimPlayerView() {
               className="absolute inset-x-0 w-full h-4 opacity-0 cursor-pointer z-20"
             />
 
+            {/* Hover timestamp tooltip */}
+            {hoverTimeMs !== null && (
+              <div
+                className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-900 text-white text-[11px] font-mono border border-slate-700/80 shadow-xl pointer-events-none z-30"
+                style={{ left: `${hoverTimeMs.pct}%` }}
+              >
+                {formatSimpleTime(hoverTimeMs.ms)}
+              </div>
+            )}
+
             {/* Keyframe hover tooltip */}
-            {hoverKeyframe !== null && (
+            {hoverKeyframe !== null && hoverTimeMs === null && (
               <div
                 className="absolute -top-7 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-800 text-cyan-300 text-[10px] font-mono border border-slate-700 shadow-lg pointer-events-none z-30"
                 style={{

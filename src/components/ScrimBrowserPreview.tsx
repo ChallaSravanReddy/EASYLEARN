@@ -146,9 +146,12 @@ export default function ScrimBrowserPreview({
   }
 
   const effectiveConsoleOpen = showConsole || isInternalConsoleOpen;
+  const isDocked = aspectRatio === 'responsive';
 
   return (
-    <div className={`flex flex-col bg-[#0f172a] rounded-xl overflow-hidden border border-slate-700/80 shadow-2xl font-sans select-none ${ratioClass} ${className}`}>
+    <div className={`flex flex-col bg-[#0f172a] font-sans select-none overflow-hidden ${
+      isDocked ? 'h-full w-full rounded-none border-0 shadow-none' : `rounded-xl border border-slate-700/80 shadow-2xl ${ratioClass}`
+    } ${className}`}>
       {/* ── Realistic Chrome Title / Tab Bar ── */}
       <div className="bg-[#1e293b] px-3 py-1.5 flex items-center justify-between border-b border-slate-700/60 select-none">
         {/* macOS Traffic Light Window Buttons */}

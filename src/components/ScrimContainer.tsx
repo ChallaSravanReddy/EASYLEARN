@@ -211,11 +211,11 @@ export default function ScrimContainer({
             </div>
 
             {/* Web Browser Component */}
-            <div className="w-full lg:w-[460px] xl:w-[500px] flex-shrink-0 bg-[#070b13] p-3 flex flex-col items-center justify-center overflow-auto border-t lg:border-t-0 border-slate-800">
+            <div className="w-full lg:w-1/2 flex-shrink-0 bg-[#070b13] flex flex-col overflow-hidden border-t lg:border-t-0 border-slate-800">
               <ScrimBrowserPreview
                 files={files}
                 activeFile={activeFile}
-                aspectRatio={browserAspectRatio}
+                aspectRatio="responsive"
               />
             </div>
           </div>

@@ -29,6 +29,7 @@ import {
   FolderPlus,
   FilePlus,
   PanelLeft,
+  Columns,
   Columns2,
   Maximize2,
   Minimize2,
@@ -316,11 +317,37 @@ export default function RecordingStudio() {
 
   // Navigation & Layout State
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
-  const [showMiniBrowser, setShowMiniBrowser] = useState<boolean>(true);
+  const [studioPreviewMode, setStudioPreviewMode] = useState<'split' | 'pip' | 'hidden'>('split');
+  const [studioSplitRatio, setStudioSplitRatio] = useState<number>(50);
+  const [isDraggingStudioSplitter, setIsDraggingStudioSplitter] = useState<boolean>(false);
+  const studioWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const [bottomDrawerOpen, setBottomDrawerOpen] = useState<boolean>(true);
   const [activeBottomTab, setActiveBottomTab] = useState<'runner' | 'terminal' | 'console'>('terminal');
   const [showExplainModal, setShowExplainModal] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const handleStudioSplitterMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingStudioSplitter(true);
+    const container = studioWorkspaceRef.current;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = moveEvent.clientX - containerRect.left;
+      const newRatio = Math.max(25, Math.min(75, (newWidth / containerRect.width) * 100));
+      setStudioSplitRatio(newRatio);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingStudioSplitter(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, []);
 
   // File Management State
   const [showNewFileInput, setShowNewFileInput] = useState<boolean>(false);
@@ -1001,19 +1028,36 @@ export default function RecordingStudio() {
             <PanelLeft className="w-4 h-4" />
           </button>
 
-          {/* Mini Browser Layout Toggle */}
-          <button
-            onClick={() => setShowMiniBrowser(!showMiniBrowser)}
-            className={`p-1 rounded flex items-center gap-1 transition-all cursor-pointer ${
-              showMiniBrowser
-                ? 'bg-slate-800 ring-1 ring-blue-500/40'
-                : 'hover:bg-slate-800/80 opacity-70 hover:opacity-100'
-            }`}
-            title="Toggle Live Mini Browser"
-          >
-            <div className="w-3.5 h-3.5 rounded-[2px] bg-blue-600 shadow-xs" />
-            <div className="w-3.5 h-3.5 rounded-[2px] bg-white shadow-xs" />
-          </button>
+          {/* Layout Mode Toggles */}
+          <div className="flex items-center bg-slate-900 rounded-md border border-slate-800 p-0.5">
+            <button
+              onClick={() => setStudioPreviewMode('hidden')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                studioPreviewMode === 'hidden' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Code Only"
+            >
+              <Columns className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setStudioPreviewMode('split')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                studioPreviewMode === 'split' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Split View (Docked)"
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setStudioPreviewMode('pip')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                studioPreviewMode === 'pip' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Mini Browser (Floating PIP)"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
           {/* Recording Action Controls */}
           {status === 'idle' || status === 'stopped' ? (
@@ -1073,7 +1117,7 @@ export default function RecordingStudio() {
       </header>
 
       {/* ── 2. MAIN HORIZONTAL STUDIO WORKSPACE ── */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+      <div ref={studioWorkspaceRef} className="flex-1 flex overflow-hidden min-h-0 relative bg-[#0c0d14]">
         {/* ── LEFT FILES SIDEBAR (MATCHING SCREENSHOT) ── */}
         {sidebarOpen && (
           <div className="w-48 sm:w-56 bg-[#0d0f17] border-r border-slate-800/80 flex flex-col shrink-0 select-none">
@@ -1175,7 +1219,13 @@ export default function RecordingStudio() {
         )}
 
         {/* ── RIGHT STUDIO CODE & PREVIEW WORKSPACE ── */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
+        <div
+          style={{
+            width: studioPreviewMode === 'split' ? `${studioSplitRatio}%` : '100%',
+            flex: studioPreviewMode === 'split' ? 'none' : '1',
+          }}
+          className="flex flex-col min-w-0 bg-[#0c0d14] relative h-full transition-[width] duration-75 overflow-hidden"
+        >
           {/* Active File Header Bar (Matching Screenshot) */}
           <div className="h-8 bg-[#0e1017] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none">
             <div className="flex items-center gap-2">
@@ -1251,8 +1301,8 @@ export default function RecordingStudio() {
               />
             </div>
 
-            {/* ── AUTHENTIC MODERN BROWSER PREVIEW (300px width in full size window) ── */}
-            {showMiniBrowser && (
+            {/* ── Floating Modern Browser Preview (PIP Mode) ── */}
+            {studioPreviewMode === 'pip' && (
               <CodePreviewIframe
                 files={files}
                 entryFile="index.html"
@@ -1261,9 +1311,10 @@ export default function RecordingStudio() {
                 defaultConsoleOpen={false}
                 isFloating={true}
                 defaultPosition={{ right: 16, top: 12 }}
-                defaultSize={{ width: 360, height: 270 }}
+                defaultSize={{ width: 440, height: 320 }}
                 debounceMs={100}
-                onClose={() => setShowMiniBrowser(false)}
+                onClose={() => setStudioPreviewMode('hidden')}
+                onDock={() => setStudioPreviewMode('split')}
               />
             )}
           </div>
@@ -1412,6 +1463,40 @@ export default function RecordingStudio() {
             </div>
           )}
         </div>
+
+        {/* Resizable Splitter Handle */}
+        {studioPreviewMode === 'split' && (
+          <div
+            onMouseDown={handleStudioSplitterMouseDown}
+            onDoubleClick={() => setStudioSplitRatio(50)}
+            className="w-1.5 hover:w-2 bg-[#10121d] hover:bg-blue-600 active:bg-blue-500 cursor-col-resize transition-all shrink-0 z-20 flex items-center justify-center group select-none border-x border-slate-800/80"
+            title="Drag to resize split view (Double-click to reset 50/50)"
+          >
+            <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />
+          </div>
+        )}
+
+        {/* Right Docked Split View Browser Preview */}
+        {studioPreviewMode === 'split' && (
+          <div
+            style={{ width: `${100 - studioSplitRatio}%` }}
+            className="flex flex-col border-l border-slate-800/80 bg-[#0c0d14] shrink-0 h-full min-w-[320px] relative overflow-hidden"
+          >
+            {isDraggingStudioSplitter && (
+              <div className="absolute inset-0 z-50 bg-transparent select-none cursor-col-resize" />
+            )}
+            <CodePreviewIframe
+              files={files}
+              entryFile="index.html"
+              title="localhost:3000"
+              showConsoleDrawer={false}
+              defaultConsoleOpen={false}
+              isFloating={false}
+              debounceMs={100}
+              onDock={() => setStudioPreviewMode('pip')}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── AI CODE EXPLAIN MODAL ── */}

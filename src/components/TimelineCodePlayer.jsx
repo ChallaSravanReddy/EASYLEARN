@@ -790,8 +790,8 @@ export default function TimelineCodePlayer() {
             )}
 
             {/* Floating Terminal Preview (Styled like Scrimba's Preview Ctrl+L) */}
-            <Draggable nodeRef={nodeRef} defaultPosition={{ x: window.innerWidth - 460, y: window.innerHeight - 340 }}>
-              <div ref={nodeRef} className="fixed top-0 left-0 z-[1000] w-[420px] shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-slate-700/70 bg-[#12141f]/95 backdrop-blur-md flex flex-col">
+            <Draggable nodeRef={nodeRef} bounds="parent" defaultPosition={{ x: Math.max(16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 460), y: 16 }}>
+              <div ref={nodeRef} className="absolute z-40 w-[400px] max-w-[calc(100%-32px)] shadow-2xl shadow-black/80 rounded-xl overflow-hidden border border-slate-700/70 bg-[#12141f]/95 backdrop-blur-md flex flex-col">
                 <div className="h-7 bg-slate-900/90 flex items-center justify-between px-3 cursor-move border-b border-slate-800 select-none">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-200">Preview</span>
