@@ -26,6 +26,8 @@ import {
   Download,
   Check,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   ExternalLink,
   Cpu,
   MousePointer,
@@ -114,6 +116,9 @@ export default function ScrimPlayerView() {
   const [showConceptSlide, setShowConceptSlide] = useState<boolean>(true);
   const [showExplainModal, setShowExplainModal] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showInitialOverlay, setShowInitialOverlay] = useState<boolean>(true);
+  const [bottomDrawerOpen, setBottomDrawerOpen] = useState<boolean>(false);
+  const [activeBottomTab, setActiveBottomTab] = useState<'runner' | 'console'>('runner');
 
   const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -527,8 +532,10 @@ export default function ScrimPlayerView() {
           >
             <ArrowLeft className="w-3.5 h-3.5" />
           </button>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
-            //
+          {/* Scrimba Signature Twin Offset Blocks */}
+          <div className="flex items-center gap-1 shrink-0 px-1 cursor-pointer" onClick={() => navigate('/dashboard')} title="Scrimba">
+            <div className="w-2.5 h-4 bg-blue-500 rounded-[1.5px] transform -translate-y-0.5 shadow-xs" />
+            <div className="w-2.5 h-4 bg-white rounded-[1.5px] transform translate-y-0.5 shadow-xs" />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-white text-xs font-semibold tracking-tight truncate max-w-[180px] sm:max-w-xs">
@@ -542,13 +549,13 @@ export default function ScrimPlayerView() {
 
         {/* Right: EXPLAIN button, layout switchers, XP & Challenges */}
         <div className="flex items-center gap-2">
-          {/* AI Explain Button */}
+          {/* AI Explain Button (Scrimba Style) */}
           <button
             onClick={() => setShowExplainModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-950/70 hover:bg-blue-900/80 text-blue-400 border border-blue-500/40 text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm shadow-blue-500/10 hover:scale-105 active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#0d2238] hover:bg-[#122e4c] text-sky-400 border border-sky-500/30 text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer"
             title="Ask AI to explain current code line-by-line"
           >
-            <Sparkles className="w-3 h-3 text-blue-400" />
+            <Sparkles className="w-3.5 h-3.5" />
             <span>EXPLAIN</span>
           </button>
 
@@ -1063,8 +1070,141 @@ export default function ScrimPlayerView() {
                 </button>
               </div>
             )}
+            {/* ── Live Synchronized Captions Pill (Scrimba Signature) ── */}
+            {activeCaption && showCaptions && isPlaying && (
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 px-5 py-2 rounded-full bg-[#12141f]/95 backdrop-blur-md border border-slate-700/80 text-sm font-medium text-slate-200 shadow-2xl pointer-events-none select-none flex items-center gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <span>{activeCaption.prefix}</span>
+                <span className="font-bold text-white underline decoration-blue-400">{activeCaption.highlight}</span>
+                <span>{activeCaption.suffix}</span>
+              </div>
+            )}
           </div>
+
+          {/* ── Scrimba Bottom Runner / Console Drawer Tabs ── */}
+          <div className="h-7 bg-[#0e1017] border-t border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none text-xs">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setActiveBottomTab('runner');
+                  setBottomDrawerOpen(bottomDrawerOpen && activeBottomTab === 'runner' ? false : true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                  bottomDrawerOpen && activeBottomTab === 'runner'
+                    ? 'bg-slate-800 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>◇ Runner</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveBottomTab('console');
+                  setBottomDrawerOpen(bottomDrawerOpen && activeBottomTab === 'console' ? false : true);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                  bottomDrawerOpen && activeBottomTab === 'console'
+                    ? 'bg-slate-800 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>≡ Console</span>
+              </button>
+              <button
+                onClick={() => setBottomDrawerOpen(!bottomDrawerOpen)}
+                className="p-1 rounded text-slate-500 hover:text-slate-300 cursor-pointer"
+                title="Toggle bottom drawer"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => setBottomDrawerOpen(!bottomDrawerOpen)}
+              className="p-1 rounded text-slate-500 hover:text-slate-300 cursor-pointer"
+              title="Toggle drawer"
+            >
+              {bottomDrawerOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* Drawer Body */}
+          {bottomDrawerOpen && (
+            <div className="h-32 bg-[#0a0c12] border-t border-slate-800/80 p-3 font-mono text-xs overflow-y-auto shrink-0 select-text animate-in slide-in-from-bottom-2 duration-150">
+              {activeBottomTab === 'runner' ? (
+                <div className="space-y-1">
+                  <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Test Runner: 0 failures / 2 passed</span>
+                  </div>
+                  <div className="text-slate-400 text-[11px] leading-relaxed">
+                    ✓ Environment ready (Node.js Sandbox active)<br />
+                    ✓ Code evaluated without syntax violations
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1 text-slate-300 text-[11px]">
+                  <div className="text-slate-500">[system] Devtools console attached to live preview</div>
+                  <div className="text-slate-400">&gt; Live output streaming from index.js...</div>
+                  {isStudentModified && (
+                    <div className="text-amber-400">[info] Student code recompiled in real-time</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* ── Authentic Scrimba Initial Video Card Overlay ── */}
+        {showInitialOverlay && !isPlaying && (
+          <div
+            onClick={() => {
+              setShowInitialOverlay(false);
+              play();
+            }}
+            className="absolute inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none cursor-pointer group"
+          >
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowInitialOverlay(false);
+                play();
+              }}
+              className="w-full max-w-lg bg-gradient-to-br from-[#1b1f35]/95 via-[#13172b]/95 to-[#0b0d19]/95 border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-5 transition-transform duration-300 group-hover:scale-[1.01]"
+            >
+              {/* Video Thumbnail with big Play button */}
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 flex items-center justify-center shadow-inner">
+                <img
+                  src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=450&fit=crop"
+                  alt="Lesson Preview"
+                  className="absolute inset-0 w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity"
+                />
+                <div className="absolute inset-0 bg-blue-950/20 backdrop-blur-[0.5px]" />
+                
+                {/* Center Glowing Play Button */}
+                <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-600/90 group-hover:bg-blue-500 flex items-center justify-center shadow-2xl shadow-blue-500/60 ring-4 ring-white/20 transition-all duration-300 group-hover:scale-110">
+                  <Play className="w-8 h-8 sm:w-9 sm:h-9 fill-white text-white translate-x-0.5" />
+                </div>
+              </div>
+
+              {/* Bottom Scrimba Bar */}
+              <div className="w-full flex items-center justify-between text-xs text-slate-300 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <div className="w-2.5 h-3.5 bg-blue-500 rounded-[1.5px] transform -translate-y-0.5" />
+                    <div className="w-2.5 h-3.5 bg-white rounded-[1.5px] transform translate-y-0.5" />
+                  </div>
+                  <span className="font-extrabold tracking-wider uppercase text-white font-sans text-xs">
+                    SCRIMBA
+                  </span>
+                </div>
+
+                <div className="text-slate-300 text-xs font-medium">
+                  Hi there. Click play to start coding.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Resizable Splitter Handle */}
         {previewMode === 'split' && (

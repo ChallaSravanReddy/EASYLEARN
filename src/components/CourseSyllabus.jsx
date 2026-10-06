@@ -239,7 +239,10 @@ export default function CourseSyllabus() {
 
                   {/* CTA / Lock */}
                   {unlocked ? (
-                    <button className="flex-shrink-0 flex items-center gap-1.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-transparent px-5 py-2.5 rounded-xl hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white transition-all duration-300 group-hover:shadow-lg group-hover:shadow-indigo-500/20">
+                    <button
+                      onClick={() => navigate("/player")}
+                      className="flex-shrink-0 flex items-center gap-1.5 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-transparent px-5 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 dark:hover:text-white transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-500/20 cursor-pointer"
+                    >
                       Start <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                   ) : (
@@ -265,8 +268,8 @@ export default function CourseSyllabus() {
               </div>
 
               <button
-                onClick={() => navigate("/course/javascript/introduction")}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base transition-all duration-300 shadow-xl shadow-indigo-600/30 dark:shadow-none hover:-translate-y-1 mb-5"
+                onClick={() => navigate("/player")}
+                className="w-full py-4 bg-[#0086ff] hover:bg-[#0074e0] active:bg-[#0065c4] text-white rounded-2xl font-bold text-base transition-all duration-300 shadow-xl shadow-blue-500/25 hover:-translate-y-0.5 mb-5 cursor-pointer uppercase tracking-wider"
               >
                 Enroll Now — Free
               </button>

@@ -698,9 +698,8 @@ export default function CodePreviewIframe({
                   className="flex-1 min-w-0 cursor-text flex items-center font-mono text-xs overflow-hidden"
                   title="Click to edit URL"
                 >
-                  <span className="text-slate-500 text-[11px] mr-0.5">http://</span>
-                  <span className="font-semibold text-slate-100">{parsedDomain}</span>
-                  <span className="text-slate-400 truncate">{parsedPath}</span>
+                  <span className="text-slate-300 font-medium">:8000</span>
+                  <span className="text-slate-500 ml-1">/</span>
                 </div>
               )}
 

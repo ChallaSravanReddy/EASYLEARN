@@ -57,7 +57,7 @@ function Layout() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/course/:courseName" element={<CourseSyllabus />} />
-            <Route path="/course/javascript/introduction" element={<TimelineCodePlayer />} />
+            <Route path="/course/javascript/introduction" element={<ScrimPlayerView />} />
             
             {/* Engine & Instructor Routes */}
             <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
@@ -65,7 +65,7 @@ function Layout() {
             <Route path="/studio" element={<RecordingStudio />} />
             <Route path="/player" element={<ScrimPlayerView />} />
             <Route path="/scrim-player" element={<ScrimPlayerView />} />
-            <Route path="/lesson/:lessonId" element={<TimelineCodePlayer />} />
+            <Route path="/lesson/:lessonId" element={<ScrimPlayerView />} />
           </Routes>
         </main>
         {!hideLayout && <Footer />}
