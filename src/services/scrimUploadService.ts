@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ScrimManifest } from '../types/scrim';
+import { scrimDatabase } from './scrimDatabase';
 
 export interface ScrimRecord {
   id: string;
@@ -130,24 +131,35 @@ export async function uploadScrimSession(params: DirectUploadParams): Promise<Sc
     notifyProgress('saving_record', 'Registering record in scrims table...', 100, 100);
     await new Promise((r) => setTimeout(r, 200));
 
+    const localAudioUrl = URL.createObjectURL(audioBlob);
+    const localManifestUrl = URL.createObjectURL(manifestBlob);
+
+    await scrimDatabase.saveClass({
+      id: scrimId,
+      title: title || manifest.metadata.title,
+      description,
+      instructor_id: instructorId,
+      instructor_name: 'Instructor',
+      duration_ms: manifest.metadata.duration,
+      audio_url: localAudioUrl,
+      manifest_url: localManifestUrl,
+      manifest,
+      initial_files: manifest.initialState.files,
+      audio_blob: audioBlob,
+    });
+
     const mockRecord: ScrimRecord = {
       id: scrimId,
       title: title || manifest.metadata.title,
       description,
       instructor_id: instructorId,
       duration_ms: manifest.metadata.duration,
-      audio_url: URL.createObjectURL(audioBlob),
-      manifest_url: URL.createObjectURL(manifestBlob),
+      audio_url: localAudioUrl,
+      manifest_url: localManifestUrl,
       created_at: new Date().toISOString(),
     };
 
-    try {
-      const existing = JSON.parse(localStorage.getItem('easy_published_scrims') || '[]');
-      existing.unshift(mockRecord);
-      localStorage.setItem('easy_published_scrims', JSON.stringify(existing));
-    } catch (e) {}
-
-    notifyProgress('completed', 'Session published successfully!', 100, 100);
+    notifyProgress('completed', 'Session published successfully to database!', 100, 100);
     return mockRecord;
   }
 
@@ -235,6 +247,23 @@ export async function uploadScrimSession(params: DirectUploadParams): Promise<Sc
       console.warn('[ScrimUpload] Database insert warning (proceeding with asset URLs):', dbError);
     }
 
+    // Also save to hybrid scrimDatabase for instant offline query & indexing
+    try {
+      await scrimDatabase.saveClass({
+        id: scrimId,
+        title: title || manifest.metadata.title,
+        description,
+        instructor_id: instructorId,
+        instructor_name: 'Instructor',
+        duration_ms: manifest.metadata.duration,
+        audio_url: publicAudioUrl,
+        manifest_url: publicManifestUrl,
+        manifest,
+        initial_files: manifest.initialState.files,
+        audio_blob: audioBlob,
+      });
+    } catch (_) {}
+
     const finalRecord: ScrimRecord = savedRecord || recordPayload;
 
     notifyProgress('completed', 'Scrim session published successfully!', 100, 100);
@@ -246,39 +275,28 @@ export async function uploadScrimSession(params: DirectUploadParams): Promise<Sc
 }
 
 /**
- * Fetches a published scrim session from Supabase by ID
+ * Fetches a published scrim session from Supabase, IndexedDB, or LocalStorage
  */
 export async function fetchPublishedScrim(scrimId: string): Promise<{
   record: ScrimRecord;
   manifest: ScrimManifest;
 } | null> {
   try {
-    // 1. Query 'scrims' table
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('scrims')
-        .select('*')
-        .eq('id', scrimId)
-        .single();
-
-      if (error || !data) {
-        console.warn('[fetchPublishedScrim] DB query error or not found:', error);
-      } else {
-        const manifestRes = await fetch(data.manifest_url);
-        const manifest = (await manifestRes.json()) as ScrimManifest;
-        return { record: data as ScrimRecord, manifest };
-      }
-    }
-
-    // 2. LocalStorage fallback for demo/offline
-    const localScrims: ScrimRecord[] = JSON.parse(
-      localStorage.getItem('easy_published_scrims') || '[]'
-    );
-    const found = localScrims.find((s) => s.id === scrimId);
-    if (found) {
-      const manifestRes = await fetch(found.manifest_url);
-      const manifest = (await manifestRes.json()) as ScrimManifest;
-      return { record: found, manifest };
+    const classItem = await scrimDatabase.getClassById(scrimId);
+    if (classItem) {
+      return {
+        record: {
+          id: classItem.id,
+          title: classItem.title,
+          description: classItem.description,
+          instructor_id: classItem.instructor_id || null,
+          duration_ms: classItem.duration_ms,
+          audio_url: classItem.audio_url,
+          manifest_url: classItem.manifest_url,
+          created_at: classItem.created_at,
+        },
+        manifest: classItem.manifest,
+      };
     }
 
     return null;

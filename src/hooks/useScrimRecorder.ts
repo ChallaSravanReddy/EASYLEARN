@@ -12,6 +12,8 @@ import type {
   CursorSelectionEvent,
   PointerEventTelemetry,
   FileSwitchEvent,
+  FileDeleteEvent,
+  FileCreateEvent,
 } from '../types/scrim';
 
 interface MonacoEditorInstance {
@@ -218,11 +220,11 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
    * Helper to throttle and emit a pointer telemetry event based on client coordinates over the editor
    */
   const recordPointerCoordinates = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, force = false) => {
       if (statusRef.current !== 'recording') return;
 
       const now = performance.now();
-      if (now - lastPointerTimeRef.current < pointerThrottleMs) {
+      if (!force && now - lastPointerTimeRef.current < pointerThrottleMs) {
         return;
       }
 
@@ -300,6 +302,20 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
         (typeof editor.getDomNode === 'function' ? editor.getDomNode() : null);
       editorContainerRef.current = resolvedContainer;
 
+      // Helper to record cursor visible position as pointer telemetry while typing
+      const syncCursorPointer = (positionOverride?: any) => {
+        try {
+          if (!resolvedContainer || typeof editor.getScrolledVisiblePosition !== 'function') return;
+          const pos = positionOverride || (typeof editor.getPosition === 'function' ? editor.getPosition() : null);
+          if (!pos) return;
+          const visiblePos = editor.getScrolledVisiblePosition(pos);
+          if (visiblePos) {
+            const rect = resolvedContainer.getBoundingClientRect();
+            recordPointerCoordinates(rect.left + visiblePos.left, rect.top + visiblePos.top, true);
+          }
+        } catch (_) {}
+      };
+
       // 1. Text content deltas
       const contentDisposable = editor.onDidChangeModelContent((event: any) => {
         if (statusRef.current !== 'recording') return;
@@ -322,6 +338,9 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
           };
           recordEvent(item);
         }
+
+        // Record pointer/placeholder location at current typing caret
+        syncCursorPointer();
       });
       monacoDisposablesRef.current.push(contentDisposable);
 
@@ -340,6 +359,9 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
           },
         };
         recordEvent(item);
+
+        // Record pointer/placeholder location on cursor repositioning
+        syncCursorPointer(event.position);
       });
       monacoDisposablesRef.current.push(cursorDisposable);
 
@@ -407,6 +429,43 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
           t: getRelativeTime(),
           type: 'file_switch',
           fileId,
+        };
+        recordEvent(event);
+      }
+    },
+    [getRelativeTime, recordEvent]
+  );
+
+  /**
+   * Records a file_delete telemetry event and removes the file from recorder filesRef
+   */
+  const recordFileDelete = useCallback(
+    (fileId: string) => {
+      delete filesRef.current[fileId];
+      if (statusRef.current === 'recording') {
+        const event: FileDeleteEvent = {
+          t: getRelativeTime(),
+          type: 'file_delete',
+          fileId,
+        };
+        recordEvent(event);
+      }
+    },
+    [getRelativeTime, recordEvent]
+  );
+
+  /**
+   * Records a file_create telemetry event and registers the file in recorder filesRef
+   */
+  const recordFileCreate = useCallback(
+    (fileId: string, initialContent = '') => {
+      filesRef.current[fileId] = initialContent;
+      if (statusRef.current === 'recording') {
+        const event: FileCreateEvent = {
+          t: getRelativeTime(),
+          type: 'file_create',
+          fileId,
+          initialContent,
         };
         recordEvent(event);
       }
@@ -679,6 +738,10 @@ export function useScrimRecorder(options: UseScrimRecorderOptions) {
     captureKeyframe,
     bindMonacoEditor,
     switchActiveFile,
+    recordFileDelete,
+    deleteFile: recordFileDelete,
+    recordFileCreate,
+    createFile: recordFileCreate,
     updateFiles,
     getRelativeTime,
     recordPointerCoordinates,

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import type * as MonacoType from 'monaco-editor';
 import {
   Mic,
   Square,
@@ -37,12 +38,14 @@ import {
   Copy,
   ChevronDown,
   ChevronsUpDown,
+  ArrowLeft,
 } from 'lucide-react';
 import { useScrimRecorder } from '../hooks/useScrimRecorder';
 import type { ScrimManifest, ScrimEvent } from '../types/scrim';
 import CodePreviewIframe from './CodePreviewIframe';
 import ScrimPublishModal from './ScrimPublishModal';
 import ScrimbaFileIcon from './ScrimbaFileIcon';
+import { scrimDatabase } from '../services/scrimDatabase';
 
 export interface StudioTemplate {
   key: string;
@@ -283,6 +286,16 @@ function formatDuration(ms: number): string {
     .padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
 }
 
+export function getLanguage(fileName: string): string {
+  if (fileName.endsWith('.html')) return 'html';
+  if (fileName.endsWith('.css')) return 'css';
+  if (fileName.endsWith('.js')) return 'javascript';
+  if (fileName.endsWith('.ts') || fileName.endsWith('.tsx')) return 'typescript';
+  if (fileName.endsWith('.json')) return 'json';
+  if (fileName.endsWith('.py')) return 'python';
+  return 'plaintext';
+}
+
 export default function RecordingStudio() {
   const navigate = useNavigate();
 
@@ -295,8 +308,13 @@ export default function RecordingStudio() {
   const [projectSlug, setProjectSlug] = useState<string>(activeTemplate.slug);
   const [lessonTitle, setLessonTitle] = useState<string>(activeTemplate.title);
 
-  // Search & Navigation Layout State
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Synchronized refs for stable callbacks
+  const filesRef = useRef<Record<string, string>>(activeTemplate.files);
+  filesRef.current = files;
+  const activeFileRef = useRef<string>('index.html');
+  activeFileRef.current = activeFile;
+
+  // Navigation & Layout State
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [showMiniBrowser, setShowMiniBrowser] = useState<boolean>(true);
   const [bottomDrawerOpen, setBottomDrawerOpen] = useState<boolean>(true);
@@ -331,7 +349,15 @@ export default function RecordingStudio() {
 
   // Editor container ref for pointer coordinates
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
-  const monacoEditorRef = useRef<any>(null);
+
+  // Monaco Native Model and View State storage
+  const monacoRef = useRef<typeof MonacoType | null>(null);
+  const monacoEditorRef = useRef<MonacoType.editor.IStandaloneCodeEditor | null>(null);
+  const modelsRef = useRef<Map<string, MonacoType.editor.ITextModel>>(new Map());
+  const viewStatesRef = useRef<Map<string, MonacoType.editor.ICodeEditorViewState>>(new Map());
+  const contentListenerRef = useRef<MonacoType.IDisposable | null>(null);
+  const syncTimerRef = useRef<any>(null);
+  const lastSyncTimeRef = useRef<number>(0);
 
   const handleIncomingEvent = useCallback((event: ScrimEvent) => {
     setLiveEvents((prev) => [event, ...prev.slice(0, 49)]);
@@ -349,6 +375,8 @@ export default function RecordingStudio() {
     captureKeyframe,
     bindMonacoEditor,
     switchActiveFile,
+    recordFileDelete,
+    recordFileCreate,
     updateFiles,
     recordPointerCoordinates,
   } = useScrimRecorder({
@@ -365,33 +393,248 @@ export default function RecordingStudio() {
     updateFiles(files);
   }, [files, updateFiles]);
 
-  const handleEditorMount = (editor: any) => {
+  // Helper to retrieve or create a distinct Monaco ITextModel indexed by inmemory URI
+  const getOrCreateModel = useCallback(
+    (fileName: string, initialContent = ''): MonacoType.editor.ITextModel | null => {
+      const monaco = monacoRef.current;
+      if (!monaco) return null;
+
+      const existingInMap = modelsRef.current.get(fileName);
+      if (existingInMap && !existingInMap.isDisposed()) {
+        return existingInMap;
+      }
+
+      const uri = monaco.Uri.parse(`inmemory://project/${fileName}`);
+      let model = monaco.editor.getModel(uri);
+      if (model && !model.isDisposed()) {
+        modelsRef.current.set(fileName, model);
+        return model;
+      }
+
+      const language = getLanguage(fileName);
+      model = monaco.editor.createModel(initialContent, language, uri);
+      modelsRef.current.set(fileName, model);
+      return model;
+    },
+    []
+  );
+
+  // Helper to extract all latest file contents from the active Monaco models
+  const getAllModelValues = useCallback((): Record<string, string> => {
+    const result: Record<string, string> = { ...filesRef.current };
+    modelsRef.current.forEach((model, fileName) => {
+      if (!model.isDisposed()) {
+        result[fileName] = model.getValue();
+      }
+    });
+    return result;
+  }, []);
+
+  // Synchronize state and recorder immediately (flush)
+  const flushFileChanges = useCallback(() => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    const currentValues = getAllModelValues();
+    filesRef.current = currentValues;
+    setFiles(currentValues);
+    updateFiles(currentValues);
+  }, [getAllModelValues, updateFiles]);
+
+  // Responsive throttled & debounced content change handler to keep preview in sync while typing
+  const handleModelContentChanged = useCallback(() => {
+    const now = performance.now();
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+
+    const doSync = () => {
+      lastSyncTimeRef.current = performance.now();
+      const currentValues = getAllModelValues();
+      filesRef.current = currentValues;
+      setFiles(currentValues);
+      updateFiles(currentValues);
+    };
+
+    // If more than 150ms has elapsed since last sync, update browser preview immediately
+    if (now - lastSyncTimeRef.current > 150) {
+      doSync();
+    } else {
+      // Otherwise schedule a trailing 100ms sync
+      syncTimerRef.current = setTimeout(doSync, 100);
+    }
+  }, [getAllModelValues, updateFiles]);
+
+  const handleEditorWillMount = (monaco: typeof MonacoType) => {
+    monacoRef.current = monaco;
+    monaco.editor.defineTheme('scrimba-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'f43f5e', fontStyle: 'bold' },
+        { token: 'string', foreground: '38bdf8' },
+        { token: 'number', foreground: 'a78bfa' },
+        { token: 'type', foreground: '34d399' },
+        { token: 'function', foreground: 'fbbf24' },
+      ],
+      colors: {
+        'editor.background': '#0c0e15',
+        'editor.foreground': '#f8fafc',
+        'editorLineNumber.foreground': '#334155',
+        'editorLineNumber.activeForeground': '#94a3b8',
+        'editor.lineHighlightBackground': '#141824',
+        'editorCursor.foreground': '#38bdf8',
+        'editor.selectionBackground': '#1d4ed855',
+      },
+    });
+
+    // Pre-initialize models for current files
+    Object.entries(filesRef.current).forEach(([fName, content]) => {
+      const uri = monaco.Uri.parse(`inmemory://project/${fName}`);
+      let model = monaco.editor.getModel(uri);
+      if (!model || model.isDisposed()) {
+        model = monaco.editor.createModel(content, getLanguage(fName), uri);
+      }
+      modelsRef.current.set(fName, model);
+    });
+  };
+
+  const handleEditorMount = (
+    editor: MonacoType.editor.IStandaloneCodeEditor,
+    monaco: typeof MonacoType
+  ) => {
     monacoEditorRef.current = editor;
-    const dom = editorContainerRef.current || (typeof editor.getDomNode === 'function' ? editor.getDomNode() : null);
+    monacoRef.current = monaco;
+
+    // Ensure models are registered for all files in project
+    Object.entries(filesRef.current).forEach(([fName, content]) => {
+      getOrCreateModel(fName, content);
+    });
+
+    // Imperatively set the initial active model
+    const activeModel =
+      modelsRef.current.get(activeFileRef.current) ||
+      getOrCreateModel(activeFileRef.current, filesRef.current[activeFileRef.current] ?? '');
+
+    if (activeModel) {
+      editor.setModel(activeModel);
+    }
+
+    const dom =
+      editorContainerRef.current ||
+      (typeof editor.getDomNode === 'function' ? editor.getDomNode() : null);
     bindMonacoEditor(editor, dom);
+
+    // Debounced listener to sync project files without re-rendering on every keystroke
+    if (contentListenerRef.current) {
+      contentListenerRef.current.dispose();
+    }
+    contentListenerRef.current = editor.onDidChangeModelContent(() => {
+      handleModelContentChanged();
+    });
+
+    // Save shortcut: Ctrl+S / Cmd+S
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      flushFileChanges();
+      setTerminalHistory((prev) => [
+        ...prev,
+        `> Project saved (${Object.keys(filesRef.current).length} files)`,
+        '~/projects/s0ggid5oum',
+      ]);
+    });
   };
 
-  const handleEditorChange = (value: string | undefined) => {
-    const updated = value ?? '';
-    setFiles((prev) => ({
-      ...prev,
-      [activeFile]: updated,
-    }));
-  };
+  // Tab switching using Monaco's native URI model API
+  const handleTabChange = useCallback(
+    (nextFileName: string) => {
+      if (nextFileName === activeFileRef.current) return;
 
-  const handleTabChange = (fileName: string) => {
-    setActiveFile(fileName);
-    switchActiveFile(fileName);
-  };
+      const editor = monacoEditorRef.current;
+      const prevFileName = activeFileRef.current;
+
+      if (editor) {
+        // 1. Save cursor position, scroll, and view state for previous active tab
+        const currentViewState = editor.saveViewState();
+        if (currentViewState) {
+          viewStatesRef.current.set(prevFileName, currentViewState);
+        }
+
+        // 2. Fetch or create target model without tearing down or rewriting existing models
+        let targetModel = modelsRef.current.get(nextFileName);
+        if (!targetModel || targetModel.isDisposed()) {
+          targetModel = getOrCreateModel(nextFileName, filesRef.current[nextFileName] ?? '');
+        }
+
+        // 3. Switch active buffer imperatively
+        if (targetModel) {
+          editor.setModel(targetModel);
+
+          // 4. Restore saved view state if available
+          const savedViewState = viewStatesRef.current.get(nextFileName);
+          if (savedViewState) {
+            editor.restoreViewState(savedViewState);
+          }
+        }
+
+        editor.focus();
+      }
+
+      activeFileRef.current = nextFileName;
+      setActiveFile(nextFileName);
+      switchActiveFile(nextFileName);
+    },
+    [getOrCreateModel, switchActiveFile]
+  );
 
   const handleTemplateChange = (templateKey: string) => {
     setSelectedTemplateKey(templateKey);
     const tmpl = STUDIO_TEMPLATES[templateKey];
     if (tmpl) {
+      const monaco = monacoRef.current;
+      const editor = monacoEditorRef.current;
+
+      // 1. Dispose existing models
+      modelsRef.current.forEach((m) => {
+        if (!m.isDisposed()) m.dispose();
+      });
+      modelsRef.current.clear();
+      viewStatesRef.current.clear();
+
+      // 2. Create models for new template files
+      if (monaco) {
+        Object.entries(tmpl.files).forEach(([fName, content]) => {
+          const uri = monaco.Uri.parse(`inmemory://project/${fName}`);
+          const oldModel = monaco.editor.getModel(uri);
+          if (oldModel && !oldModel.isDisposed()) {
+            oldModel.dispose();
+          }
+          const model = monaco.editor.createModel(content, getLanguage(fName), uri);
+          modelsRef.current.set(fName, model);
+        });
+      }
+
+      const firstFile = Object.keys(tmpl.files)[0] || 'index.html';
       setFiles(tmpl.files);
+      filesRef.current = { ...tmpl.files };
       setProjectSlug(tmpl.slug);
       setLessonTitle(tmpl.title);
-      setActiveFile(Object.keys(tmpl.files)[0] || 'index.html');
+      setActiveFile(firstFile);
+      activeFileRef.current = firstFile;
+
+      if (editor) {
+        const firstModel = modelsRef.current.get(firstFile);
+        if (firstModel) {
+          editor.setModel(firstModel);
+          editor.focus();
+        }
+      }
+
+      switchActiveFile(firstFile);
+      updateFiles(tmpl.files);
+
       setTerminalHistory((prev) => [
         ...prev,
         `> Switch template to: ${tmpl.name} (${tmpl.slug})`,
@@ -403,16 +646,54 @@ export default function RecordingStudio() {
   const handleAddFile = () => {
     if (!newFileName.trim()) return;
     const cleanName = newFileName.trim();
-    if (files[cleanName]) {
+    if (files[cleanName] || modelsRef.current.has(cleanName)) {
       setErrorMessage(`File "${cleanName}" already exists.`);
       return;
     }
+
+    const monaco = monacoRef.current;
+    if (!monaco) {
+      setErrorMessage('Editor not ready.');
+      return;
+    }
+
+    // 1. Create distinct Monaco model with inmemory URI
+    const uri = monaco.Uri.parse(`inmemory://project/${cleanName}`);
+    let existingModel = monaco.editor.getModel(uri);
+    if (existingModel && !existingModel.isDisposed()) {
+      existingModel.dispose();
+    }
+    const newModel = monaco.editor.createModel('', getLanguage(cleanName), uri);
+    modelsRef.current.set(cleanName, newModel);
+
+    // 2. Update files state and ref
     setFiles((prev) => ({
       ...prev,
       [cleanName]: '',
     }));
+    filesRef.current[cleanName] = '';
+
+    // 3. Dispatch file_create event to telemetry recorder
+    recordFileCreate(cleanName, '');
+
+    // 4. Switch editor imperatively to new model
+    const editor = monacoEditorRef.current;
+    if (editor) {
+      const currentViewState = editor.saveViewState();
+      if (currentViewState) {
+        viewStatesRef.current.set(activeFileRef.current, currentViewState);
+      }
+      editor.setModel(newModel);
+      editor.focus();
+    }
+
+    activeFileRef.current = cleanName;
     setActiveFile(cleanName);
     switchActiveFile(cleanName);
+
+    // Flush file changes so preview and bundler update immediately
+    flushFileChanges();
+
     setNewFileName('');
     setShowNewFileInput(false);
     setErrorMessage(null);
@@ -424,18 +705,80 @@ export default function RecordingStudio() {
       setErrorMessage('Cannot delete the only file in project.');
       return;
     }
+
+    // 1. Properly dispose model instance from Monaco and clean up maps
+    const model = modelsRef.current.get(fileName);
+    if (model) {
+      if (!model.isDisposed()) {
+        model.dispose();
+      }
+      modelsRef.current.delete(fileName);
+    }
+    viewStatesRef.current.delete(fileName);
+
+    // 2. Dispatch file_delete event to telemetry recorder
+    recordFileDelete(fileName);
+
+    // 3. Update files state
     const nextFiles = { ...files };
     delete nextFiles[fileName];
+    delete filesRef.current[fileName];
     setFiles(nextFiles);
-    if (activeFile === fileName) {
-      const remaining = Object.keys(nextFiles)[0];
-      setActiveFile(remaining);
-      switchActiveFile(remaining);
+
+    // 4. If deleted file was currently active, switch to another remaining file
+    if (activeFileRef.current === fileName) {
+      const remainingFiles = Object.keys(nextFiles);
+      const nextActive = remainingFiles[0];
+      if (nextActive) {
+        const editor = monacoEditorRef.current;
+        if (editor) {
+          const nextModel = modelsRef.current.get(nextActive);
+          if (nextModel && !nextModel.isDisposed()) {
+            editor.setModel(nextModel);
+            const savedViewState = viewStatesRef.current.get(nextActive);
+            if (savedViewState) {
+              editor.restoreViewState(savedViewState);
+            }
+            editor.focus();
+          }
+        }
+        activeFileRef.current = nextActive;
+        setActiveFile(nextActive);
+        switchActiveFile(nextActive);
+      }
     }
+
+    // Flush file changes to sync preview immediately
+    flushFileChanges();
+    setTerminalHistory((prev) => [
+      ...prev,
+      `> Deleted file "${fileName}"`,
+      '~/projects/s0ggid5oum',
+    ]);
   };
+
+  const handleClearActiveFileCode = useCallback(() => {
+    const curFile = activeFileRef.current;
+    const model = modelsRef.current.get(curFile);
+    if (model && !model.isDisposed()) {
+      model.setValue('');
+    }
+    setFiles((prev) => ({
+      ...prev,
+      [curFile]: '',
+    }));
+    filesRef.current[curFile] = '';
+    flushFileChanges();
+    setTerminalHistory((prev) => [
+      ...prev,
+      `> Cleared code in "${curFile}"`,
+      '~/projects/s0ggid5oum',
+    ]);
+  }, [flushFileChanges]);
 
   const handleStart = async () => {
     try {
+      flushFileChanges();
       setErrorMessage(null);
       setRecordingResult(null);
       setLiveEvents([]);
@@ -447,6 +790,7 @@ export default function RecordingStudio() {
 
   const handleStop = async () => {
     try {
+      flushFileChanges();
       setErrorMessage(null);
       const result = await stopRecording();
       const audioUrl = URL.createObjectURL(result.audioBlob);
@@ -460,6 +804,27 @@ export default function RecordingStudio() {
         });
       } catch (e) {}
 
+      const finalClassId = `class-${Date.now()}`;
+      try {
+        await scrimDatabase.saveClass({
+          id: finalClassId,
+          title: lessonTitle,
+          description: `Interactive recording of ${activeTemplate.name} with ${result.scrimManifest.keyframes.length} keyframes and ${result.scrimManifest.events.length} telemetry events.`,
+          instructor_name: activeTemplate.author.replace(/^By\s+/i, '') || 'Instructor',
+          category: activeTemplate.name,
+          difficulty: 'Beginner',
+          duration_ms: result.scrimManifest.metadata.duration,
+          audio_url: audioUrl,
+          manifest_url: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(result.scrimManifest)),
+          manifest: result.scrimManifest,
+          initial_files: result.scrimManifest.initialState.files,
+          audio_blob: result.audioBlob,
+          tags: [activeTemplate.name, 'Interactive', 'Recorded Class'],
+        });
+      } catch (dbErr) {
+        console.warn('[RecordingStudio] Could not auto-save to database:', dbErr);
+      }
+
       setRecordingResult({
         ...result,
         audioUrl,
@@ -470,8 +835,42 @@ export default function RecordingStudio() {
     }
   };
 
+  // Global Ctrl+S listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        flushFileChanges();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [flushFileChanges]);
+
+  // Clean up all Monaco models on studio unmount
+  useEffect(() => {
+    return () => {
+      if (contentListenerRef.current) {
+        contentListenerRef.current.dispose();
+        contentListenerRef.current = null;
+      }
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      modelsRef.current.forEach((model) => {
+        if (!model.isDisposed()) {
+          model.dispose();
+        }
+      });
+      modelsRef.current.clear();
+      viewStatesRef.current.clear();
+    };
+  }, []);
+
   // Run button execution handler
   const handleRunProject = () => {
+    flushFileChanges();
     setBottomDrawerOpen(true);
     setActiveBottomTab('terminal');
     setTerminalHistory((prev) => [
@@ -502,8 +901,10 @@ export default function RecordingStudio() {
       newOutputs.push('  Vite dev server running at: http://localhost:3000/');
     } else if (cmd.startsWith('cat ') || cmd.startsWith('node ')) {
       const fileTarget = cmd.split(' ')[1];
-      if (files[fileTarget]) {
-        newOutputs.push(files[fileTarget].slice(0, 200) + (files[fileTarget].length > 200 ? '...' : ''));
+      const model = modelsRef.current.get(fileTarget);
+      const content = model && !model.isDisposed() ? model.getValue() : files[fileTarget];
+      if (content !== undefined) {
+        newOutputs.push(content.slice(0, 200) + (content.length > 200 ? '...' : ''));
       } else {
         newOutputs.push(`Error: file "${fileTarget}" not found.`);
       }
@@ -524,38 +925,7 @@ export default function RecordingStudio() {
     }, 50);
   };
 
-  const getLanguage = (fileName: string) => {
-    if (fileName.endsWith('.html')) return 'html';
-    if (fileName.endsWith('.css')) return 'css';
-    if (fileName.endsWith('.js')) return 'javascript';
-    if (fileName.endsWith('.ts') || fileName.endsWith('.tsx')) return 'typescript';
-    if (fileName.endsWith('.json')) return 'json';
-    return 'plaintext';
-  };
 
-  const handleEditorWillMount = (monaco: any) => {
-    monaco.editor.defineTheme('scrimba-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'f43f5e', fontStyle: 'bold' },
-        { token: 'string', foreground: '38bdf8' },
-        { token: 'number', foreground: 'a78bfa' },
-        { token: 'type', foreground: '34d399' },
-        { token: 'function', foreground: 'fbbf24' },
-      ],
-      colors: {
-        'editor.background': '#0c0e15',
-        'editor.foreground': '#f8fafc',
-        'editorLineNumber.foreground': '#334155',
-        'editorLineNumber.activeForeground': '#94a3b8',
-        'editor.lineHighlightBackground': '#141824',
-        'editorCursor.foreground': '#38bdf8',
-        'editor.selectionBackground': '#1d4ed855',
-      },
-    });
-  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -567,305 +937,278 @@ export default function RecordingStudio() {
     }
   };
 
-  const filteredTemplates = useMemo(() => {
-    const list = TEMPLATE_ORDER.map((k) => STUDIO_TEMPLATES[k]).filter(Boolean);
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.author.toLowerCase().includes(q) ||
-        t.slug.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
-
   return (
-    <div className="flex flex-col h-[calc(100vh-4.5rem)] bg-[#0c0d14] text-slate-100 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl font-sans select-none relative">
-      {/* ── 1. TOP GLOBAL SEARCH / COMMAND BAR (MATCHING SCREENSHOT) ── */}
-      <div className="h-11 bg-[#07080e] border-b border-slate-800/80 px-4 flex items-center justify-center shrink-0 z-30 select-none">
-        <div className="w-full flex items-center justify-between bg-[#11131c] border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs text-slate-300 shadow-inner">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <div className="w-5 h-5 rounded flex items-center justify-center bg-[#181a26] border border-slate-700/50 text-slate-400 shrink-0">
-              <Settings className="w-3.5 h-3.5" />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find a template (by topic, creator, framework and more)..."
-              className="w-full bg-transparent text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
-            />
+    <div className="flex flex-col h-screen h-[100vh] w-full bg-[#0c0d14] text-slate-100 overflow-hidden font-sans select-none relative">
+      {/* ── 1. STUDIO TOP BAR: HEADER, PROJECT TITLE, RECORDING, RUN, EXPLAIN (MATCHING SCREENSHOT) ── */}
+      <header className="h-11 bg-[#12141f] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none z-20">
+        {/* Left: Back button, Scrimba //, Title, Timer */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
+            //
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 pl-2">
-            <div className="w-5 h-5 rounded flex items-center justify-center bg-[#181a26] border border-slate-700/50 text-slate-400">
-              <ChevronsUpDown className="w-3.5 h-3.5" />
-            </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-white text-xs font-semibold tracking-tight truncate max-w-[180px] sm:max-w-xs">
+              {lessonTitle}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300">
+              {formatDuration(elapsedTime)}
+            </span>
           </div>
         </div>
-      </div>
+
+        {/* Right: RUN, EXPLAIN, Layout Toggle, Recording Controls, Fullscreen */}
+        <div className="flex items-center gap-2">
+          {/* RUN Button */}
+          <button
+            onClick={handleRunProject}
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#13271f] hover:bg-[#1b382d] text-emerald-400 border border-emerald-600/30 text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            title="Execute project & reload sandbox"
+          >
+            <PlaySquare className="w-3.5 h-3.5 fill-emerald-400/20" />
+            <span>RUN</span>
+          </button>
+
+          {/* EXPLAIN Button */}
+          <button
+            onClick={() => setShowExplainModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#10243a] hover:bg-[#173250] text-sky-400 border border-sky-500/40 text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm shadow-blue-500/10 hover:scale-105 active:scale-95 cursor-pointer"
+            title="Ask AI to explain current code line-by-line"
+          >
+            <Sparkles className="w-3 h-3 text-sky-400" />
+            <span>EXPLAIN</span>
+          </button>
+
+          {/* Vertical divider */}
+          <div className="h-4 w-[1px] bg-slate-700/80 mx-0.5" />
+
+          {/* Files Sidebar Toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+              sidebarOpen ? 'text-slate-200 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={sidebarOpen ? 'Hide Files sidebar' : 'Show Files sidebar'}
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+
+          {/* Mini Browser Layout Toggle */}
+          <button
+            onClick={() => setShowMiniBrowser(!showMiniBrowser)}
+            className={`p-1 rounded flex items-center gap-1 transition-all cursor-pointer ${
+              showMiniBrowser
+                ? 'bg-slate-800 ring-1 ring-blue-500/40'
+                : 'hover:bg-slate-800/80 opacity-70 hover:opacity-100'
+            }`}
+            title="Toggle Live Mini Browser"
+          >
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-blue-600 shadow-xs" />
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-white shadow-xs" />
+          </button>
+
+          {/* Recording Action Controls */}
+          {status === 'idle' || status === 'stopped' ? (
+            <button
+              onClick={handleStart}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95 ml-1"
+            >
+              <Mic className="w-3 h-3" /> Record
+            </button>
+          ) : null}
+
+          {status === 'recording' ? (
+            <button
+              onClick={pauseRecording}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer ml-1"
+            >
+              <Pause className="w-3 h-3" /> Pause
+            </button>
+          ) : null}
+
+          {status === 'paused' ? (
+            <button
+              onClick={resumeRecording}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer ml-1"
+            >
+              <Play className="w-3 h-3" /> Resume
+            </button>
+          ) : null}
+
+          {status === 'recording' || status === 'paused' ? (
+            <>
+              <button
+                onClick={() => captureKeyframe()}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                title="Snapshot Keyframe"
+              >
+                <Camera className="w-3.5 h-3.5 text-blue-400" />
+              </button>
+              <button
+                onClick={handleStop}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs cursor-pointer active:scale-95"
+              >
+                <Square className="w-3 h-3 fill-current" /> Stop
+              </button>
+            </>
+          ) : null}
+
+          {/* Fullscreen */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </header>
 
       {/* ── 2. MAIN HORIZONTAL STUDIO WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* ── LEFT TEMPLATES & PROJECTS SIDEBAR (MATCHING SCREENSHOT) ── */}
+        {/* ── LEFT FILES SIDEBAR (MATCHING SCREENSHOT) ── */}
         {sidebarOpen && (
-          <div className="w-56 sm:w-60 bg-[#0a0b12] border-r border-slate-800/80 flex flex-col shrink-0 select-none overflow-y-auto no-scrollbar">
-            <div className="p-3 space-y-2">
-              {filteredTemplates.map((tmpl) => {
-                const isSelected = selectedTemplateKey === tmpl.key;
-                return (
-                  <div
-                    key={tmpl.key}
-                    onClick={() => handleTemplateChange(tmpl.key)}
-                    className={`group px-3 py-2.5 rounded-lg cursor-pointer transition-all border ${
-                      isSelected
-                        ? 'bg-[#181a24] text-white border-slate-700/70 shadow-md'
-                        : 'text-slate-300 hover:bg-[#13151f] hover:text-white border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold truncate text-slate-100">{tmpl.name}</span>
-                      {tmpl.badge ? (
-                        <span className="px-1.5 py-0.2 rounded bg-blue-600 text-white text-[9px] font-mono font-bold leading-none">
-                          {tmpl.badge}
-                        </span>
-                      ) : (
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-1 font-medium">
-                      {tmpl.author}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── RIGHT STUDIO CODE & PREVIEW WORKSPACE ── */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
-          {/* ── STUDIO TOP BAR: LOGO, PROJECT TITLE, RECORDING, RUN, EXPLAIN ── */}
-          <header className="h-11 bg-[#12141f] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none z-20">
-            {/* Left: Scrimba //, Avatar, Slug, Ctrl+S */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
-                  sidebarOpen ? 'text-slate-200 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title="Toggle Templates sidebar"
-              >
-                <PanelLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/40 text-cyan-400 font-mono font-bold text-xs select-none">
-                //
-              </div>
-
-              <span className="text-slate-600 text-xs">/</span>
-
-              {/* Avatar Capsule */}
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 via-indigo-500 to-cyan-400 flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/20">
-                P
-              </div>
-
-              <span className="text-slate-600 text-xs">/</span>
-
-              {/* Project Slug & Ctrl+S to save */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={projectSlug}
-                  onChange={(e) => setProjectSlug(e.target.value)}
-                  className="bg-transparent text-xs font-mono font-bold text-white border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition-colors px-1 py-0.5 max-w-[140px] sm:max-w-xs truncate"
-                  title="Project slug / identifier"
-                />
-                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tight hidden md:inline">
-                  CTRL+S to save
-                </span>
-              </div>
-            </div>
-
-            {/* Right: RUN, EXPLAIN, Layout Toggle, Recording Controls */}
-            <div className="flex items-center gap-2">
-              {/* RUN Button (Matching Screenshot) */}
-              <button
-                onClick={handleRunProject}
-                className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#13271f] hover:bg-[#1b382d] text-emerald-400 border border-emerald-600/30 text-xs font-bold tracking-wider transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-                title="Execute project & reload sandbox"
-              >
-                <PlaySquare className="w-3.5 h-3.5 fill-emerald-400/20" />
-                <span>RUN</span>
-              </button>
-
-              {/* EXPLAIN Button */}
-              <button
-                onClick={() => setShowExplainModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#10243a] hover:bg-[#173250] text-sky-400 border border-sky-500/40 text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm shadow-blue-500/10 hover:scale-105 active:scale-95 cursor-pointer"
-                title="Ask AI to explain current code line-by-line"
-              >
-                <Sparkles className="w-3 h-3 text-sky-400" />
-                <span>EXPLAIN</span>
-              </button>
-
-              {/* Vertical divider */}
-              <div className="h-4 w-[1px] bg-slate-700/80 mx-0.5" />
-
-              {/* Mini Browser Layout Toggle (Blue + White dual box icon from screenshot) */}
-              <button
-                onClick={() => setShowMiniBrowser(!showMiniBrowser)}
-                className={`p-1 rounded flex items-center gap-1 transition-all cursor-pointer ${
-                  showMiniBrowser
-                    ? 'bg-slate-800 ring-1 ring-blue-500/40'
-                    : 'hover:bg-slate-800/80 opacity-70 hover:opacity-100'
-                }`}
-                title="Toggle Live Mini Browser"
-              >
-                <div className="w-3.5 h-3.5 rounded-[2px] bg-blue-600 shadow-xs" />
-                <div className="w-3.5 h-3.5 rounded-[2px] bg-white shadow-xs" />
-              </button>
-
-              {/* Recording Action Controls */}
-              {status === 'idle' || status === 'stopped' ? (
-                <button
-                  onClick={handleStart}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all cursor-pointer hover:scale-105 active:scale-95 ml-1"
-                >
-                  <Mic className="w-3 h-3" /> Record
-                </button>
-              ) : null}
-
-              {status === 'recording' ? (
-                <button
-                  onClick={pauseRecording}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer ml-1"
-                >
-                  <Pause className="w-3 h-3" /> Pause
-                </button>
-              ) : null}
-
-              {status === 'paused' ? (
-                <button
-                  onClick={resumeRecording}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer ml-1"
-                >
-                  <Play className="w-3 h-3" /> Resume
-                </button>
-              ) : null}
-
-              {status === 'recording' || status === 'paused' ? (
-                <>
-                  <button
-                    onClick={() => captureKeyframe()}
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                    title="Snapshot Keyframe"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-blue-400" />
-                  </button>
-                  <button
-                    onClick={handleStop}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs cursor-pointer active:scale-95"
-                  >
-                    <Square className="w-3 h-3 fill-current" /> Stop
-                  </button>
-                </>
-              ) : null}
-
-              {/* Fullscreen */}
-              <button
-                onClick={toggleFullscreen}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </button>
-            </div>
-          </header>
-
-          {/* ── FILES BAR & TABS (MATCHING SCREENSHOT) ── */}
-          <div className="h-8 bg-[#0e1017] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none">
-            {/* Left: "FILES", New File, New Folder, Plus */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">FILES</span>
-              <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
+          <div className="w-48 sm:w-56 bg-[#0d0f17] border-r border-slate-800/80 flex flex-col shrink-0 select-none">
+            {/* Header: FILES + Add File button */}
+            <div className="h-8 px-3 flex items-center justify-between border-b border-slate-800/60 text-slate-400 text-[10px] font-bold tracking-wider uppercase">
+              <span>FILES</span>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setShowNewFileInput(true)}
-                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                   title="New File"
                 >
                   <FilePlus className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  onClick={() => setShowNewFileInput(true)}
-                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
-                  title="New Folder"
-                >
-                  <FolderPlus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setShowNewFileInput(true)}
-                  className="p-1 text-blue-400 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
-                  title="Add Tab"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
               </div>
-
-              {/* Inline Add File Input */}
-              {showNewFileInput && (
-                <div className="flex items-center gap-1 bg-slate-900 border border-blue-500/50 rounded px-2 py-0.5">
-                  <input
-                    type="text"
-                    value={newFileName}
-                    onChange={(e) => setNewFileName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddFile();
-                      if (e.key === 'Escape') setShowNewFileInput(false);
-                    }}
-                    placeholder="filename.ext"
-                    autoFocus
-                    className="bg-transparent text-xs text-white outline-none w-24 font-mono"
-                  />
-                  <button onClick={handleAddFile} className="text-emerald-400 hover:text-emerald-300">
-                    <Check className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Center / Right: Tab Row with Scrimba Badges & 3-dots Menu */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Inline new file input */}
+            {showNewFileInput && (
+              <div className="px-2 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  placeholder="filename.ext"
+                  className="bg-transparent text-xs text-white focus:outline-none w-full font-mono"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddFile();
+                    if (e.key === 'Escape') setShowNewFileInput(false);
+                  }}
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddFile}
+                  className="text-emerald-400 hover:text-emerald-300 p-0.5 cursor-pointer"
+                  title="Create file"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => setShowNewFileInput(false)}
+                  className="text-slate-500 hover:text-slate-300 p-0.5 cursor-pointer"
+                  title="Cancel"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {/* File List items with Scrimba badges and delete button */}
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 no-scrollbar">
               {Object.keys(files).map((fileName) => {
                 const isActive = activeFile === fileName;
                 return (
                   <div
                     key={fileName}
                     onClick={() => handleTabChange(fileName)}
-                    className={`group flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-mono font-medium cursor-pointer transition-all border ${
+                    className={`group flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-colors ${
                       isActive
-                        ? 'bg-[#181c2b] text-white border-blue-500/40 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border-transparent'
+                        ? 'bg-[#181c2b] text-white font-medium shadow-sm border border-slate-700/60'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
                     }`}
                   >
-                    <ScrimbaFileIcon fileName={fileName} className="w-3.5 h-3.5" />
-                    <span>{fileName}</span>
-                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-0.5" />}
+                    <ScrimbaFileIcon fileName={fileName} className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate flex-1">{fileName}</span>
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
                     {Object.keys(files).length > 1 && (
                       <button
                         onClick={(e) => handleDeleteFile(fileName, e)}
-                        className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity p-0.5 ml-1"
-                        title="Delete file"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded transition-all shrink-0 cursor-pointer"
+                        title={`Delete ${fileName}`}
                       >
-                        <X className="w-3 h-3" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                 );
               })}
+            </div>
 
-              <button className="p-1 text-slate-500 hover:text-white rounded transition-colors ml-1 cursor-pointer">
-                <MoreVertical className="w-3.5 h-3.5" />
+            {/* Template Selector at bottom of sidebar */}
+            <div className="p-2 border-t border-slate-800/70 bg-[#090a10]">
+              <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 px-1">
+                Template
+              </div>
+              <select
+                value={selectedTemplateKey}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                className="w-full bg-[#12141f] border border-slate-800 rounded-md px-2 py-1 text-xs text-slate-200 outline-none cursor-pointer hover:border-slate-700 font-medium"
+              >
+                {TEMPLATE_ORDER.map((k) => (
+                  <option key={k} value={k} className="bg-slate-900 text-white">
+                    {STUDIO_TEMPLATES[k]?.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* ── RIGHT STUDIO CODE & PREVIEW WORKSPACE ── */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0d14] relative">
+          {/* Active File Header Bar (Matching Screenshot) */}
+          <div className="h-8 bg-[#0e1017] border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <ScrimbaFileIcon fileName={activeFile} className="w-3.5 h-3.5" />
+              <span className="text-xs font-mono text-slate-200 font-semibold">{activeFile}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Clear / Delete Code In Current File */}
+              <button
+                onClick={handleClearActiveFileCode}
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900/90 hover:bg-rose-950/70 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-700/50 text-[10px] font-mono transition-all cursor-pointer"
+                title="Delete all code in this file"
+              >
+                <Trash2 className="w-3 h-3 text-rose-400" />
+                <span>Clear Code</span>
               </button>
+
+              {/* Status indicator matching screenshot */}
+              <div className="flex items-center gap-2 text-[10px] font-mono">
+                {status === 'recording' ? (
+                  <span className="text-rose-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    Recording Live
+                  </span>
+                ) : (
+                  <span className="text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Interactive Editor
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -890,11 +1233,8 @@ export default function RecordingStudio() {
               <Editor
                 height="100%"
                 width="100%"
-                language={getLanguage(activeFile)}
                 theme="scrimba-dark"
                 beforeMount={handleEditorWillMount}
-                value={files[activeFile] ?? ''}
-                onChange={handleEditorChange}
                 onMount={handleEditorMount}
                 options={{
                   fontSize: 14,
@@ -911,46 +1251,20 @@ export default function RecordingStudio() {
               />
             </div>
 
-            {/* ── FLOATING MINI BROWSER / PREVIEW (MATCHING SCREENSHOT) ── */}
+            {/* ── AUTHENTIC MODERN BROWSER PREVIEW (300px width in full size window) ── */}
             {showMiniBrowser && (
-              <div className="absolute top-4 right-4 z-30 w-56 sm:w-64 bg-[#12141f] border border-slate-700/80 rounded-lg overflow-hidden shadow-2xl backdrop-blur-md select-none">
-                {/* Header Bar with 3000 / */}
-                <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#161824] border-b border-slate-800 text-[11px] text-slate-300">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={handleRunProject}
-                      className="p-0.5 hover:text-white text-slate-400 transition-colors"
-                      title="Reload preview"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                    </button>
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#0e1017] border border-slate-800 text-[10px] font-mono text-slate-300">
-                      <span className="text-slate-300 font-semibold">3000</span>
-                      <span className="text-slate-500">/</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <button
-                      onClick={() => setShowMiniBrowser(false)}
-                      className="p-0.5 hover:text-white rounded"
-                      title="Minimize preview"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Live Preview Container (Light canvas matching screenshot) */}
-                <div className="h-60 bg-[#e2e8f0] overflow-hidden relative">
-                  <CodePreviewIframe
-                    files={files}
-                    entryFile="index.html"
-                    title="Mini Browser Sandbox"
-                    showConsoleDrawer={false}
-                    defaultConsoleOpen={false}
-                  />
-                </div>
-              </div>
+              <CodePreviewIframe
+                files={files}
+                entryFile="index.html"
+                title="localhost:3000"
+                showConsoleDrawer={false}
+                defaultConsoleOpen={false}
+                isFloating={true}
+                defaultPosition={{ right: 16, top: 12 }}
+                defaultSize={{ width: 360, height: 270 }}
+                debounceMs={100}
+                onClose={() => setShowMiniBrowser(false)}
+              />
             )}
           </div>
 
@@ -1131,7 +1445,7 @@ export default function RecordingStudio() {
 
             <div className="space-y-3 text-xs leading-relaxed text-slate-300">
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-blue-300 overflow-x-auto max-h-36">
-                <pre>{files[activeFile]?.slice(0, 300) || '// Empty code'}</pre>
+                <pre>{modelsRef.current.get(activeFile)?.getValue()?.slice(0, 300) || files[activeFile]?.slice(0, 300) || '// Empty code'}</pre>
               </div>
 
               <div className="space-y-1.5">

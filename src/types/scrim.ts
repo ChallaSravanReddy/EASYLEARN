@@ -58,12 +58,27 @@ export interface FileSwitchEvent {
   fileId: string;
 }
 
+export interface FileDeleteEvent {
+  t: number;
+  type: 'file_delete';
+  fileId: string;
+}
+
+export interface FileCreateEvent {
+  t: number;
+  type: 'file_create';
+  fileId: string;
+  initialContent?: string;
+}
+
 export type ScrimEvent =
   | ContentChangeEvent
   | CursorPositionEvent
   | CursorSelectionEvent
   | PointerEventTelemetry
-  | FileSwitchEvent;
+  | FileSwitchEvent
+  | FileDeleteEvent
+  | FileCreateEvent;
 
 export interface KeyframeSnapshot {
   t: number;

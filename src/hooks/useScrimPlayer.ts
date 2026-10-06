@@ -8,6 +8,8 @@ import type {
   CursorSelectionEvent,
   PointerEventTelemetry,
   FileSwitchEvent,
+  FileDeleteEvent,
+  FileCreateEvent,
   ScrimChallenge,
 } from '../types/scrim';
 
@@ -248,6 +250,28 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
 
           filesRef.current[targetFile] = editor.getValue();
           isProgrammaticEditRef.current = false;
+
+          // Update virtual pointer position to follow typing caret in real time
+          try {
+            const pos = editor.getPosition();
+            if (pos && typeof editor.getScrolledVisiblePosition === 'function') {
+              const visiblePos = editor.getScrolledVisiblePosition(pos);
+              const domNode = editor.getDomNode();
+              if (visiblePos && domNode) {
+                const rect = domNode.getBoundingClientRect();
+                const relX = rect.width > 0 ? Number((visiblePos.left / rect.width).toFixed(4)) : 0;
+                const relY = rect.height > 0 ? Number((visiblePos.top / rect.height).toFixed(4)) : 0;
+                setVirtualPointer({
+                  x: Math.round(visiblePos.left),
+                  y: Math.round(visiblePos.top),
+                  relX: Math.max(0, Math.min(1, relX)),
+                  relY: Math.max(0, Math.min(1, relY)),
+                  visible: true,
+                  lastUpdated: performance.now(),
+                });
+              }
+            }
+          } catch (_) {}
         } else {
           // Off-screen delta: apply string splicing in memory
           const lines = currentCode.split('\n');
@@ -277,6 +301,26 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
             lineNumber: event.position.lineNumber,
             column: event.position.column,
           });
+
+          try {
+            if (typeof editor.getScrolledVisiblePosition === 'function') {
+              const visiblePos = editor.getScrolledVisiblePosition(event.position);
+              const domNode = editor.getDomNode();
+              if (visiblePos && domNode) {
+                const rect = domNode.getBoundingClientRect();
+                const relX = rect.width > 0 ? Number((visiblePos.left / rect.width).toFixed(4)) : 0;
+                const relY = rect.height > 0 ? Number((visiblePos.top / rect.height).toFixed(4)) : 0;
+                setVirtualPointer({
+                  x: Math.round(visiblePos.left),
+                  y: Math.round(visiblePos.top),
+                  relX: Math.max(0, Math.min(1, relX)),
+                  relY: Math.max(0, Math.min(1, relY)),
+                  visible: true,
+                  lastUpdated: performance.now(),
+                });
+              }
+            }
+          } catch (_) {}
         }
         break;
       }
@@ -318,6 +362,37 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
         }
         if (onActiveFileChange) {
           onActiveFileChange(newFile);
+        }
+        break;
+      }
+
+      case 'file_create': {
+        const newFileId = event.fileId;
+        const initialContent = event.initialContent || '';
+        filesRef.current[newFileId] = initialContent;
+        setFiles({ ...filesRef.current });
+
+        if (monacoRef.current) {
+          const uri = monacoRef.current.Uri.parse(`inmemory://player/${newFileId}`);
+          let existingModel = monacoRef.current.editor.getModel(uri);
+          if (!existingModel || existingModel.isDisposed()) {
+            monacoRef.current.editor.createModel(initialContent, undefined, uri);
+          }
+        }
+        if (onCodeChange) {
+          onCodeChange(filesRef.current, activeFileRef.current);
+        }
+        break;
+      }
+
+      case 'file_delete': {
+        const deletedFile = event.fileId;
+        const nextFiles = { ...filesRef.current };
+        delete nextFiles[deletedFile];
+        filesRef.current = nextFiles;
+        setFiles(nextFiles);
+        if (onCodeChange) {
+          onCodeChange(nextFiles, activeFileRef.current);
         }
         break;
       }
@@ -383,6 +458,11 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
       while (idx < events.length && events[idx].t <= clampedTarget) {
         applyEvent(events[idx]);
         idx++;
+      }
+
+      setFiles({ ...filesRef.current });
+      if (onCodeChange) {
+        onCodeChange(filesRef.current, activeFileRef.current);
       }
 
       nextEventIndexRef.current = idx;
@@ -495,11 +575,23 @@ export function useScrimPlayer(options: UseScrimPlayerOptions = {}) {
         return;
       }
 
+      let hasCodeUpdate = false;
       while (idx < events.length && events[idx].t <= audioTimeMs) {
-        applyEvent(events[idx]);
+        const ev = events[idx];
+        if (ev.type === 'content' || ev.type === 'file_create' || ev.type === 'file_delete') {
+          hasCodeUpdate = true;
+        }
+        applyEvent(ev);
         idx++;
       }
       nextEventIndexRef.current = idx;
+
+      if (hasCodeUpdate) {
+        setFiles({ ...filesRef.current });
+        if (onCodeChange) {
+          onCodeChange(filesRef.current, activeFileRef.current);
+        }
+      }
 
       // Fade out virtual pointer if idle for more than 1500ms
       setVirtualPointer((prev) => {

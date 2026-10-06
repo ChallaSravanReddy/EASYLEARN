@@ -769,45 +769,20 @@ export default function ScrimPlayerView() {
               </button>
             )}
 
-            {/* ── Floating Mini Browser PIP Card (Bottom-Right, Scrimba Signature) ── */}
+            {/* ── Floating Modern Browser Preview (PIP) ── */}
             {previewMode === 'pip' && (
-              <div className="absolute bottom-6 right-6 z-30 w-72 sm:w-80 bg-[#12141f]/95 border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[11px] text-slate-300 select-none">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-200">Preview</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
-                      Ctrl+L
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setPreviewMode('split')}
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                      title="Dock to side (Split view)"
-                    >
-                      <Columns2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setPreviewMode('hidden')}
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                      title="Hide preview"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                {/* Body: Live Preview Sandbox Container */}
-                <div className="h-48 sm:h-52 bg-slate-950 overflow-hidden relative">
-                  <CodePreviewIframe
-                    files={files}
-                    entryFile="index.html"
-                    title="Mini Browser Sandbox"
-                    showConsoleDrawer={false}
-                    defaultConsoleOpen={false}
-                  />
-                </div>
-              </div>
+              <CodePreviewIframe
+                files={files}
+                entryFile="index.html"
+                title="localhost:3000"
+                showConsoleDrawer={false}
+                defaultConsoleOpen={false}
+                isFloating={true}
+                defaultPosition={{ right: 16, top: 16 }}
+                defaultSize={{ width: 360, height: 270 }}
+                onClose={() => setPreviewMode('hidden')}
+                onDock={() => setPreviewMode('split')}
+              />
             )}
 
             {/* ── Floating Concept Diagram / Notes Card (Bottom-Left, Scrimba Signature) ── */}
@@ -1029,15 +1004,17 @@ export default function ScrimPlayerView() {
           </div>
         </div>
 
-        {/* Right: Docked Split View Sandbox Preview */}
+        {/* Right: Docked Split View Sandbox Preview (300px width in full size window) */}
         {previewMode === 'split' && (
-          <div className="w-[45%] flex flex-col border-l border-slate-800 bg-slate-900 min-w-[320px]">
+          <div className="w-[300px] flex flex-col border-l border-slate-800 bg-slate-900 shrink-0">
             <CodePreviewIframe
               files={files}
               entryFile="index.html"
-              title="Live Interactive Sandbox"
-              showConsoleDrawer={true}
+              title="localhost:3000"
+              showConsoleDrawer={false}
               defaultConsoleOpen={false}
+              isFloating={false}
+              onDock={() => setPreviewMode('pip')}
             />
           </div>
         )}

@@ -46,6 +46,18 @@ export interface CodePreviewIframeProps {
   showConsoleDrawer?: boolean;
   /** Default console open state (default: true if errors exist, false otherwise) */
   defaultConsoleOpen?: boolean;
-  /** Title shown in preview header */
+  /** Title shown in preview header / tab */
   title?: string;
+  /** Whether the browser preview renders as a floating, draggable, resizable window (default: false) */
+  isFloating?: boolean;
+  /** Initial floating position { x, y, right, top } in px */
+  defaultPosition?: { x?: number; y?: number; right?: number; top?: number };
+  /** Initial floating size { width, height } in px */
+  defaultSize?: { width: number; height: number };
+  /** Callback fired when window close (red traffic light dot or tab close) is clicked */
+  onClose?: () => void;
+  /** Callback fired when dock-to-side is selected */
+  onDock?: () => void;
+  /** Initial URL displayed in the address bar (default: 'http://localhost:3000') */
+  initialUrl?: string;
 }

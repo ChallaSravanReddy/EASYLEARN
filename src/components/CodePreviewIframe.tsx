@@ -10,15 +10,23 @@ import {
   Search,
   Copy,
   Check,
-  Smartphone,
-  Tablet,
-  Monitor,
   X,
-  Bug,
-  Info,
-  Cpu,
-  Layers,
-  Sparkles,
+  Lock,
+  ArrowLeft,
+  ArrowRight,
+  Star,
+  Puzzle,
+  User,
+  MoreVertical,
+  Plus,
+  Minus,
+  Maximize2,
+  Minimize2,
+  Globe,
+  Volume2,
+  VolumeX,
+  ExternalLink,
+  Columns2,
 } from 'lucide-react';
 import type {
   CodePreviewIframeProps,
@@ -34,24 +42,69 @@ export default function CodePreviewIframe({
   className = '',
   autoRefresh = true,
   refreshKey = 0,
-  debounceMs = 350,
+  debounceMs = 120,
   onConsoleMessage,
   onError,
-  showConsoleDrawer = true,
+  showConsoleDrawer = false,
   defaultConsoleOpen = false,
-  title = 'Live Preview',
+  title = 'localhost:3000',
+  isFloating = false,
+  defaultPosition = { right: 16, top: 12 },
+  defaultSize = { width: 360, height: 270 },
+  onClose,
+  onDock,
+  initialUrl = 'http://localhost:3000/',
 }: CodePreviewIframeProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const debounceTimerRef = useRef<any>(null);
   const consoleBottomRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef<number>(0);
+  const urlInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Floating Window & Resizing State
+  const [position, setPosition] = useState<{ x: number; y: number }>({
+    x: defaultPosition.x ?? 0,
+    y: defaultPosition.y ?? defaultPosition.top ?? 12,
+  });
+  const [hasUserDragged, setHasUserDragged] = useState<boolean>(false);
+  const [size, setSize] = useState<{ width: number; height: number }>(defaultSize);
+
+  useEffect(() => {
+    if (defaultSize?.width && defaultSize?.height) {
+      setSize(defaultSize);
+    }
+  }, [defaultSize?.width, defaultSize?.height]);
+  const [isMaximized, setIsMaximized] = useState<boolean>(false);
+  const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; posX: number; posY: number } | null>(null);
+  const resizeStartRef = useRef<{
+    mouseX: number;
+    mouseY: number;
+    startWidth: number;
+    startHeight: number;
+    direction: 'e' | 's' | 'se';
+  } | null>(null);
 
   // Compilation & Execution State
   const [bundledHtml, setBundledHtml] = useState<string>('');
   const [isCompiling, setIsCompiling] = useState<boolean>(false);
   const [compileDurationMs, setCompileDurationMs] = useState<number | null>(null);
   const [currentError, setCurrentError] = useState<SandboxError | null>(null);
+
+  // Browser Navigation & Omnibox State
+  const [historyStack, setHistoryStack] = useState<string[]>([initialUrl]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const currentUrl = historyStack[historyIndex] || initialUrl;
+  const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
+  const [urlInputValue, setUrlInputValue] = useState<string>(currentUrl);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [isCopiedUrl, setIsCopiedUrl] = useState<boolean>(false);
+  const [showBrowserMenu, setShowBrowserMenu] = useState<boolean>(false);
+  const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
 
   // Console Drawer State
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
@@ -61,10 +114,12 @@ export default function CodePreviewIframe({
   const [autoScrollConsole, setAutoScrollConsole] = useState<boolean>(true);
   const [copiedLogId, setCopiedLogId] = useState<string | null>(null);
 
-  // Viewport mode: desktop (100%), tablet (768px), mobile (375px)
-  const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  // Sync address bar text when URL changes
+  useEffect(() => {
+    setUrlInputValue(currentUrl);
+  }, [currentUrl]);
 
-  // Initialize Web Worker
+  // Initialize Web Worker for client-side sandboxing
   useEffect(() => {
     try {
       const worker = new Worker(new URL('../utils/bundler.worker.ts', import.meta.url), {
@@ -73,7 +128,6 @@ export default function CodePreviewIframe({
 
       worker.onmessage = (event: MessageEvent) => {
         const { id, success, html, error, durationMs } = event.data || {};
-        // Ignore stale requests
         if (id !== requestIdRef.current) return;
 
         setIsCompiling(false);
@@ -90,12 +144,12 @@ export default function CodePreviewIframe({
       };
 
       worker.onerror = (err) => {
-        console.warn('[CodePreviewIframe] Web Worker error, falling back to main-thread bundler:', err);
+        console.warn('[CodePreviewIframe] Web Worker error, falling back to main thread bundler:', err);
       };
 
       workerRef.current = worker;
     } catch (e) {
-      console.warn('[CodePreviewIframe] Web Worker initialization failed, using main-thread fallback:', e);
+      console.warn('[CodePreviewIframe] Web Worker init failed, using main thread fallback:', e);
       workerRef.current = null;
     }
 
@@ -108,7 +162,7 @@ export default function CodePreviewIframe({
   }, [onError]);
 
   /**
-   * Main compilation dispatcher (dispatches to Worker or falls back to main-thread)
+   * Main compilation trigger
    */
   const triggerCompilation = useCallback(
     (filesToCompile: Record<string, string>, targetEntry?: string) => {
@@ -116,14 +170,12 @@ export default function CodePreviewIframe({
       const reqId = ++requestIdRef.current;
 
       if (workerRef.current) {
-        // Run off-thread in Web Worker
         workerRef.current.postMessage({
           id: reqId,
           files: filesToCompile,
           entryFile: targetEntry,
         });
       } else {
-        // Main-thread fallback
         try {
           const result: BundlerResult = bundleVirtualProject(filesToCompile, targetEntry);
           if (reqId !== requestIdRef.current) return;
@@ -154,7 +206,7 @@ export default function CodePreviewIframe({
     [onError]
   );
 
-  // Trigger compilation whenever files, entryFile, or refreshKey change
+  // Trigger compilation whenever files or entryFile change
   useEffect(() => {
     if (!autoRefresh && refreshKey === 0) return;
 
@@ -173,12 +225,10 @@ export default function CodePreviewIframe({
     };
   }, [files, entryFile, refreshKey, autoRefresh, debounceMs, triggerCompilation]);
 
-  // Intercept postMessage events from the isolated sandbox iframe
+  // Intercept postMessage events from the isolated iframe
   useEffect(() => {
     const handleSandboxMessage = (event: MessageEvent) => {
-      // Security check: Ignore messages from unrecognized sources
       if (!event.data || typeof event.data !== 'object') return;
-
       const { type, level, args, error, timestamp } = event.data;
 
       if (type === 'SANDBOX_CONSOLE') {
@@ -188,11 +238,8 @@ export default function CodePreviewIframe({
           args: Array.isArray(args) ? args : [String(args)],
           timestamp: timestamp || Date.now(),
         };
-
-        setConsoleMessages((prev) => [...prev.slice(-300), newMsg]); // keep last 300 logs
-        if (onConsoleMessage) {
-          onConsoleMessage(newMsg);
-        }
+        setConsoleMessages((prev) => [...prev.slice(-300), newMsg]);
+        if (onConsoleMessage) onConsoleMessage(newMsg);
       } else if (type === 'SANDBOX_CONSOLE_CLEAR') {
         setConsoleMessages([]);
       } else if (type === 'SANDBOX_ERROR') {
@@ -212,14 +259,210 @@ export default function CodePreviewIframe({
     return () => window.removeEventListener('message', handleSandboxMessage);
   }, [onConsoleMessage, onError]);
 
-  // Auto-scroll console to bottom when new logs arrive
+  // Auto-scroll console
   useEffect(() => {
     if (autoScrollConsole && consoleBottomRef.current) {
       consoleBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [consoleMessages, autoScrollConsole]);
 
-  // Compute message counts
+  const reloadIframe = () => {
+    setConsoleMessages([]);
+    triggerCompilation(files, entryFile);
+  };
+
+  // History stack navigation
+  const handleGoBack = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex((prev) => prev - 1);
+      reloadIframe();
+    }
+  };
+
+  const handleGoForward = () => {
+    if (historyIndex < historyStack.length - 1) {
+      setHistoryIndex((prev) => prev + 1);
+      reloadIframe();
+    }
+  };
+
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let nextUrl = urlInputValue.trim();
+    if (!nextUrl) return;
+    if (!nextUrl.startsWith('http://') && !nextUrl.startsWith('https://')) {
+      nextUrl = 'http://' + nextUrl;
+    }
+    const nextStack = [...historyStack.slice(0, historyIndex + 1), nextUrl];
+    setHistoryStack(nextStack);
+    setHistoryIndex(nextStack.length - 1);
+    setIsEditingUrl(false);
+    reloadIframe();
+  };
+
+  const handleStartEditUrl = () => {
+    setIsEditingUrl(true);
+    setUrlInputValue(currentUrl);
+    setTimeout(() => {
+      if (urlInputRef.current) {
+        urlInputRef.current.focus();
+        urlInputRef.current.select();
+      }
+    }, 10);
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(currentUrl);
+    setIsCopiedUrl(true);
+    setTimeout(() => setIsCopiedUrl(false), 1500);
+  };
+
+  const toggleBookmark = () => {
+    setIsBookmarked((prev) => !prev);
+  };
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      setIsMinimized(true);
+    }
+  };
+
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+  };
+
+  const handleMaximize = () => {
+    setIsMaximized(!isMaximized);
+  };
+
+  // Parse domain and path for clean Omnibox presentation
+  const { parsedDomain, parsedPath } = useMemo(() => {
+    try {
+      const urlObj = new URL(currentUrl);
+      return {
+        parsedDomain: urlObj.host || 'localhost:3000',
+        parsedPath: urlObj.pathname === '/' ? '' : urlObj.pathname + urlObj.search + urlObj.hash,
+      };
+    } catch {
+      return {
+        parsedDomain: 'localhost:3000',
+        parsedPath: '',
+      };
+    }
+  }, [currentUrl]);
+
+  // Dragging logic (only empty space in tab bar triggers drag)
+  const handleTabMouseDown = (e: React.MouseEvent) => {
+    if (!isFloating || isMaximized) return;
+    const target = e.target as HTMLElement;
+    // Strictly ignore clicks on tabs, buttons, inputs, or marked elements
+    if (
+      target.closest('[data-no-drag="true"]') ||
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'INPUT'
+    ) {
+      return;
+    }
+
+    let startX = position.x;
+    let startY = position.y;
+    if (!hasUserDragged && containerRef.current) {
+      startX = containerRef.current.offsetLeft;
+      startY = containerRef.current.offsetTop;
+      setPosition({ x: startX, y: startY });
+      setHasUserDragged(true);
+    }
+
+    e.preventDefault();
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: startX,
+      posY: startY,
+    };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStartRef.current) return;
+      const deltaX = e.clientX - dragStartRef.current.mouseX;
+      const deltaY = e.clientY - dragStartRef.current.mouseY;
+      setPosition({
+        x: Math.max(0, dragStartRef.current.posX + deltaX),
+        y: Math.max(0, dragStartRef.current.posY + deltaY),
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      dragStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Window resizing logic
+  const handleResizeMouseDown = (direction: 'e' | 's' | 'se', e: React.MouseEvent) => {
+    if (!isFloating || isMaximized) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resizeStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      startWidth: size.width,
+      startHeight: size.height,
+      direction,
+    };
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeStartRef.current) return;
+      const { mouseX, mouseY, startWidth, startHeight, direction } = resizeStartRef.current;
+      const deltaX = e.clientX - mouseX;
+      const deltaY = e.clientY - mouseY;
+
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (direction === 'e' || direction === 'se') {
+        newWidth = Math.max(280, startWidth + deltaX);
+        newHeight = Math.round((newWidth * 3) / 4);
+      } else if (direction === 's') {
+        newHeight = Math.max(210, startHeight + deltaY);
+        newWidth = Math.round((newHeight * 4) / 3);
+      }
+
+      setSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      resizeStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Console counts
   const errorCount = useMemo(
     () => consoleMessages.filter((m) => m.level === 'error').length,
     [consoleMessages]
@@ -229,12 +472,9 @@ export default function CodePreviewIframe({
     [consoleMessages]
   );
 
-  // Filtered console messages
   const filteredMessages = useMemo(() => {
     return consoleMessages.filter((msg) => {
-      if (consoleFilter !== 'all' && msg.level !== consoleFilter) {
-        return false;
-      }
+      if (consoleFilter !== 'all' && msg.level !== consoleFilter) return false;
       if (consoleSearch.trim()) {
         const q = consoleSearch.toLowerCase();
         return msg.args.some((a) => a.toLowerCase().includes(q));
@@ -249,308 +489,470 @@ export default function CodePreviewIframe({
     setTimeout(() => setCopiedLogId(null), 1500);
   };
 
-  const reloadIframe = () => {
-    setConsoleMessages([]);
-    triggerCompilation(files, entryFile);
-  };
+  // Determine if window is compact (< 400px)
+  const isCompact = (isFloating ? size.width : 360) < 400;
 
-  // Viewport width styling
-  const viewportWidthClass = useMemo(() => {
-    switch (viewportMode) {
-      case 'mobile':
-        return 'max-w-[375px] shadow-2xl border-x border-slate-700/60 my-auto rounded-xl';
-      case 'tablet':
-        return 'max-w-[768px] shadow-2xl border-x border-slate-700/60 my-auto rounded-xl';
-      default:
-        return 'w-full';
-    }
-  }, [viewportMode]);
+  // Determine floating wrapper styles (4:3 ratio)
+  const floatingStyle: React.CSSProperties = isFloating
+    ? isMaximized
+      ? {
+          position: 'absolute',
+          top: 12,
+          right: 16,
+          width: 480,
+          height: 360,
+          zIndex: 35,
+        }
+      : hasUserDragged
+      ? {
+          position: 'absolute',
+          top: position.y,
+          left: position.x,
+          width: size.width,
+          height: isMinimized ? 'auto' : size.height,
+          zIndex: 35,
+        }
+      : {
+          position: 'absolute',
+          top: defaultPosition.top ?? defaultPosition.y ?? 12,
+          right:
+            defaultPosition.right !== undefined
+              ? defaultPosition.right
+              : defaultPosition.x === undefined
+              ? 16
+              : undefined,
+          left: defaultPosition.x !== undefined ? defaultPosition.x : undefined,
+          width: size.width,
+          height: isMinimized ? 'auto' : size.height,
+          zIndex: 35,
+        }
+    : {};
 
   return (
     <div
-      className={`flex flex-col h-full bg-slate-950 text-slate-100 border border-slate-800 rounded-xl overflow-hidden shadow-xl select-none relative ${className}`}
+      ref={containerRef}
+      style={floatingStyle}
+      className={`flex flex-col bg-[#141622] text-slate-100 border border-slate-700/70 rounded-xl overflow-hidden shadow-2xl select-none relative ${
+        isFloating ? 'transition-shadow' : 'h-full w-full'
+      } ${className}`}
     >
-      {/* ── Top Toolbar ── */}
-      <div className="h-11 bg-slate-900 border-b border-slate-800/80 px-3 flex items-center justify-between shrink-0 select-none z-10">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{title}</span>
-          </div>
-
-          {/* Compilation status */}
-          <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400 ml-2 pl-2 border-l border-slate-800">
-            {isCompiling ? (
-              <span className="flex items-center gap-1 text-amber-400">
-                <RotateCw className="w-3 h-3 animate-spin" /> Compiling...
-              </span>
-            ) : currentError ? (
-              <span className="flex items-center gap-1 text-rose-400 font-semibold">
-                <AlertCircle className="w-3 h-3" /> Error
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-emerald-400">
-                <Check className="w-3 h-3" />
-                {compileDurationMs !== null ? `${compileDurationMs}ms` : 'Ready'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Viewport & Controls */}
-        <div className="flex items-center gap-1.5">
-          {/* Responsive Viewport Buttons */}
-          <div className="hidden sm:flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 mr-1">
-            <button
-              onClick={() => setViewportMode('desktop')}
-              className={`p-1 rounded text-xs transition-colors ${
-                viewportMode === 'desktop' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-              title="Desktop View (100%)"
-            >
-              <Monitor className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewportMode('tablet')}
-              className={`p-1 rounded text-xs transition-colors ${
-                viewportMode === 'tablet' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-              title="Tablet View (768px)"
-            >
-              <Tablet className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewportMode('mobile')}
-              className={`p-1 rounded text-xs transition-colors ${
-                viewportMode === 'mobile' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-              title="Mobile View (375px)"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Re-run button */}
+      {/* ── 1. REALISTIC BROWSER TOP TAB BAR (macOS / Chrome Style) ── */}
+      <div
+        onMouseDown={handleTabMouseDown}
+        className={`h-10 bg-[#0f1019] border-b border-slate-800/80 px-3 flex items-center gap-2 select-none shrink-0 relative ${
+          isFloating && !isMaximized ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+        }`}
+      >
+        {/* macOS Traffic Light Window Controls */}
+        <div className="flex items-center gap-2 pr-2" data-no-drag="true">
           <button
-            onClick={reloadIframe}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all active:scale-95"
-            title="Recompile and re-run sandbox"
+            onClick={handleClose}
+            className="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e] hover:brightness-110 active:brightness-90 transition-all flex items-center justify-center group cursor-pointer"
+            title="Close window"
           >
-            <RotateCw className="w-3 h-3 text-slate-400" />
-            <span className="hidden sm:inline">Run</span>
+            <X className="w-2 h-2 text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <button
+            onClick={handleMinimize}
+            className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123] hover:brightness-110 active:brightness-90 transition-all flex items-center justify-center group cursor-pointer"
+            title={isMinimized ? 'Restore window' : 'Minimize window'}
+          >
+            <Minus className="w-2 h-2 text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+          <button
+            onClick={handleMaximize}
+            className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29] hover:brightness-110 active:brightness-90 transition-all flex items-center justify-center group cursor-pointer"
+            title={isMaximized ? 'Restore down' : 'Maximize window'}
+          >
+            {isMaximized ? (
+              <Minimize2 className="w-2 h-2 text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+            ) : (
+              <Maximize2 className="w-2 h-2 text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
           </button>
         </div>
-      </div>
 
-      {/* ── Main Preview Area (Isolated Sandbox Iframe) ── */}
-      <div className="flex-1 relative flex items-center justify-center bg-slate-900/50 overflow-hidden min-h-0">
-        {/* Isolated Iframe with strict sandbox attributes */}
-        <div className={`h-full transition-all duration-300 relative flex flex-col ${viewportWidthClass}`}>
-          <iframe
-            ref={iframeRef}
-            title={title}
-            // SANDBOX SECURITY:
-            // - allow-scripts: allows Javascript execution inside iframe
-            // - allow-modals: allows alert/prompt inside sandbox
-            // - OMITTED allow-same-origin: enforces opaque origin "null" (No cookie/localStorage access!)
-            // - OMITTED allow-top-navigation: prevents top-level window redirect
-            sandbox="allow-scripts allow-modals"
-            srcDoc={bundledHtml}
-            className="w-full h-full border-0 bg-white"
-          />
+        {/* Active Browser Tab with Curvature & Realistic Contrast */}
+        <div
+          data-no-drag="true"
+          className="h-8 bg-[#1e202e] border-t border-x border-slate-700/60 rounded-t-lg px-2.5 flex items-center gap-1.5 text-xs font-medium text-slate-100 max-w-[170px] min-w-0 flex-1 shadow-sm relative top-[1px]"
+        >
+          {/* Favicon */}
+          {isCompiling ? (
+            <RotateCw className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+          ) : (
+            <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+          )}
+
+          {/* Document / Page Title */}
+          <span className="truncate text-[11px] font-normal text-slate-200 min-w-0 flex-1">
+            {title || parsedDomain}
+          </span>
+
+          {/* Audio Indicator */}
+          {!isCompact && (
+            <button
+              onClick={() => setIsAudioMuted(!isAudioMuted)}
+              className="p-0.5 rounded text-slate-400 hover:text-blue-400 transition-colors shrink-0"
+              title={isAudioMuted ? 'Unmute tab audio' : 'Mute tab audio'}
+            >
+              {isAudioMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+            </button>
+          )}
+
+          {/* Close Tab Icon */}
+          <button
+            onClick={handleClose}
+            className="p-0.5 rounded-full hover:bg-slate-700/70 text-slate-400 hover:text-white transition-colors shrink-0 cursor-pointer"
+            title="Close tab"
+          >
+            <X className="w-3 h-3" />
+          </button>
         </div>
 
-        {/* ── Floating Error Overlay Toast (Requirement 4) ── */}
-        {currentError && (
-          <div className="absolute top-4 inset-x-4 max-w-2xl mx-auto z-40 animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className="bg-rose-950/90 backdrop-blur-md border border-rose-500/50 text-rose-100 rounded-xl p-4 shadow-2xl flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-rose-300">
-                        {currentError.type === 'syntax' ? 'Syntax Error' : 'Runtime Exception'}
-                      </span>
-                      {currentError.file && (
-                        <span className="px-2 py-0.5 rounded bg-rose-900/80 text-[11px] font-mono text-rose-200 border border-rose-700/60">
-                          {currentError.file}
-                        </span>
-                      )}
-                      {currentError.line !== undefined && (
-                        <span className="px-2 py-0.5 rounded bg-rose-900/80 text-[11px] font-mono text-rose-200 border border-rose-700/60">
-                          Line {currentError.line}
-                          {currentError.column !== undefined ? `:${currentError.column}` : ''}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+        {/* New Tab '+' Button */}
+        <button
+          onClick={reloadIframe}
+          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+          title="New tab"
+          data-no-drag="true"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
 
-                <button
-                  onClick={() => setCurrentError(null)}
-                  className="p-1 rounded text-rose-400 hover:text-white hover:bg-rose-900/60 transition-colors"
-                  title="Dismiss error overlay"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Error Message */}
-              <pre className="text-xs font-mono text-rose-100 bg-rose-900/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre-wrap border border-rose-800/40 leading-relaxed max-h-36">
-                {currentError.message}
-              </pre>
-
-              {/* Stack trace if present */}
-              {currentError.stack && (
-                <details className="text-[11px] text-rose-300/80 font-mono">
-                  <summary className="cursor-pointer hover:text-rose-200 select-none">
-                    View stack trace
-                  </summary>
-                  <pre className="mt-1 p-2 bg-slate-950/80 rounded border border-rose-900/50 text-[10px] overflow-x-auto max-h-24">
-                    {currentError.stack}
-                  </pre>
-                </details>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Draggable empty space (tab bar header) */}
+        <div className="flex-1 h-full" />
       </div>
 
-      {/* ── Bottom Drawer Terminal/Console UI Component (Requirement 3) ── */}
-      {showConsoleDrawer && (
-        <div
-          className={`border-t border-slate-800 bg-slate-950 flex flex-col transition-all duration-200 z-20 shrink-0 ${
-            isConsoleOpen ? 'h-48' : 'h-8'
-          }`}
-        >
-          {/* Console Header Bar */}
-          <div
-            className="h-8 bg-slate-900 px-3 flex items-center justify-between cursor-pointer select-none text-xs text-slate-300 border-b border-slate-800"
-            onClick={() => setIsConsoleOpen(!isConsoleOpen)}
-          >
-            <div className="flex items-center gap-2">
-              <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-semibold text-white text-[11px]">Console</span>
+      {/* When minimized, only show the top tab bar */}
+      {!isMinimized && (
+        <>
+          {/* ── 2. OMNIBOX / NAVIGATION TOOLBAR ── */}
+          <div className="h-10 bg-[#1e202e] border-b border-slate-800 px-3 flex items-center gap-2 shrink-0 select-none z-10">
+            {/* Navigation Controls: Back, Forward, Reload */}
+            <div className="flex items-center gap-1 text-slate-300" data-no-drag="true">
+              <button
+                onClick={handleGoBack}
+                disabled={historyIndex <= 0}
+                className="p-1.5 rounded-full hover:bg-slate-700/60 text-slate-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Click to go back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleGoForward}
+                disabled={historyIndex >= historyStack.length - 1}
+                className="p-1.5 rounded-full hover:bg-slate-700/60 text-slate-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Click to go forward"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={reloadIframe}
+                className="p-1.5 rounded-full hover:bg-slate-700/60 text-slate-300 transition-colors cursor-pointer"
+                title="Reload this page"
+              >
+                <RotateCw
+                  className={`w-3.5 h-3.5 ${isCompiling ? 'animate-spin text-blue-400' : ''}`}
+                />
+              </button>
+            </div>
 
-              {/* Counts */}
-              <div className="flex items-center gap-1.5 text-[10px] font-mono ml-1">
-                {errorCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                    <X className="w-2.5 h-2.5" /> {errorCount}
-                  </span>
+            {/* Address Bar (Omnibox): Centered rounded pill */}
+            <div
+              className="flex-1 max-w-xl mx-auto bg-[#12131e] hover:bg-[#151624] focus-within:bg-[#0f1019] border border-slate-700/60 focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 rounded-full px-3 py-1 flex items-center gap-2 text-xs transition-all shadow-inner group"
+              data-no-drag="true"
+            >
+              {/* Padlock Icon: Localhost / HTTPS Indicator */}
+              <div
+                className="flex items-center text-emerald-400 shrink-0"
+                title="Connection is secure (Localhost)"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </div>
+
+              {/* URL Display / Interactive Input */}
+              {isEditingUrl ? (
+                <form onSubmit={handleUrlSubmit} className="flex-1 min-w-0">
+                  <input
+                    ref={urlInputRef}
+                    type="text"
+                    value={urlInputValue}
+                    onChange={(e) => setUrlInputValue(e.target.value)}
+                    onBlur={() => setIsEditingUrl(false)}
+                    className="w-full bg-transparent text-slate-100 text-xs focus:outline-none font-mono"
+                    autoFocus
+                  />
+                </form>
+              ) : (
+                <div
+                  onClick={handleStartEditUrl}
+                  className="flex-1 min-w-0 cursor-text flex items-center font-mono text-xs overflow-hidden"
+                  title="Click to edit URL"
+                >
+                  <span className="text-slate-500 text-[11px] mr-0.5">http://</span>
+                  <span className="font-semibold text-slate-100">{parsedDomain}</span>
+                  <span className="text-slate-400 truncate">{parsedPath}</span>
+                </div>
+              )}
+
+              {/* Right actions inside Omnibox */}
+              <div className="flex items-center gap-1 shrink-0 text-slate-400">
+                {!isCompact && (
+                  <button
+                    onClick={toggleBookmark}
+                    className="p-0.5 hover:text-amber-400 transition-colors cursor-pointer"
+                    title="Bookmark this tab"
+                  >
+                    <Star
+                      className={`w-3.5 h-3.5 ${
+                        isBookmarked ? 'text-amber-400 fill-amber-400' : 'text-slate-400'
+                      }`}
+                    />
+                  </button>
                 )}
-                {warnCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                    <AlertTriangle className="w-2.5 h-2.5" /> {warnCount}
-                  </span>
-                )}
-                <span className="text-slate-500">
-                  {consoleMessages.length} {consoleMessages.length === 1 ? 'log' : 'logs'}
-                </span>
+                <button
+                  onClick={handleCopyUrl}
+                  className="p-0.5 hover:text-white transition-colors cursor-pointer"
+                  title="Copy URL"
+                >
+                  {isCopiedUrl ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              {isConsoleOpen && (
-                <>
-                  {/* Filter Pills */}
-                  <div className="flex items-center bg-slate-800 rounded p-0.5 text-[10px] font-medium mr-1">
-                    {(['all', 'log', 'warn', 'error'] as const).map((filter) => (
-                      <button
-                        key={filter}
-                        onClick={() => setConsoleFilter(filter)}
-                        className={`px-2 py-0.5 rounded capitalize transition-colors ${
-                          consoleFilter === filter
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {filter}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Search box */}
-                  <div className="flex items-center bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                    <Search className="w-3 h-3 text-slate-500 mr-1" />
-                    <input
-                      type="text"
-                      placeholder="Filter logs..."
-                      value={consoleSearch}
-                      onChange={(e) => setConsoleSearch(e.target.value)}
-                      className="bg-transparent text-[11px] text-white focus:outline-none w-20 sm:w-28 font-mono"
-                    />
-                  </div>
-
-                  {/* Clear Button */}
-                  <button
-                    onClick={() => setConsoleMessages([])}
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    title="Clear console"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </>
+            {/* Action Icons on Far Right */}
+            <div className="flex items-center gap-1 pr-1 relative" data-no-drag="true">
+              {/* Extensions Placeholder */}
+              {!isCompact && (
+                <button
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  title="Extensions"
+                >
+                  <Puzzle className="w-3.5 h-3.5" />
+                </button>
               )}
 
-              {/* Drawer Toggle */}
+              {/* Profile Avatar */}
+              {!isCompact && (
+                <div
+                  className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm ring-1 ring-white/20 cursor-pointer"
+                  title="Active Profile"
+                >
+                  <User className="w-3 h-3" />
+                </div>
+              )}
+
+              {/* Three-dots Menu */}
               <button
-                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
-                className="p-1 rounded text-slate-400 hover:text-white"
-                title={isConsoleOpen ? 'Collapse console' : 'Expand console'}
+                onClick={() => setShowBrowserMenu(!showBrowserMenu)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                title="Browser options"
               >
-                {isConsoleOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                <MoreVertical className="w-4 h-4" />
               </button>
+
+              {/* Browser Dropdown Menu */}
+              {showBrowserMenu && (
+                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1e202e] border border-slate-700 rounded-lg shadow-2xl py-1 text-xs text-slate-200 z-50">
+                  <button
+                    onClick={() => {
+                      reloadIframe();
+                      setShowBrowserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-700/60 flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Reload Page</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Ctrl+R</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsConsoleOpen(!isConsoleOpen);
+                      setShowBrowserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-700/60 flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Developer Console</span>
+                    <span className="text-[10px] text-slate-400 font-mono">F12</span>
+                  </button>
+                  {onDock && (
+                    <button
+                      onClick={() => {
+                        onDock();
+                        setShowBrowserMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-slate-700/60 flex items-center justify-between cursor-pointer"
+                    >
+                      <span>Dock to Side</span>
+                      <Columns2 className="w-3 h-3 text-slate-400" />
+                    </button>
+                  )}
+                  <div className="border-t border-slate-700/60 my-1" />
+                  <button
+                    onClick={() => {
+                      window.open('about:blank', '_blank');
+                      setShowBrowserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-slate-700/60 flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Open in New Tab</span>
+                    <ExternalLink className="w-3 h-3 text-slate-400" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Console Log List Area */}
-          {isConsoleOpen && (
-            <div className="flex-1 p-2 overflow-y-auto font-mono text-[11px] space-y-1 bg-slate-950/90 select-text">
-              {filteredMessages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-slate-600 text-xs">
-                  {consoleSearch ? 'No logs matching filter' : 'Console is empty'}
-                </div>
-              ) : (
-                filteredMessages.map((msg) => {
-                  let badgeColor = 'text-slate-400 border-slate-800 bg-slate-900';
-                  let icon = <span className="text-slate-500">&gt;</span>;
+          {/* ── 3. CLEAN FULL-BLEED IFRAME CONTAINER ── */}
+          <div className="flex-1 relative bg-white overflow-hidden min-h-0">
+            {/*
+              CRITICAL: When dragging or resizing, the transparent overlay covers the entire
+              frame to prevent the iframe from intercepting mousemove / mouseup events.
+            */}
+            {(isDragging || isResizing) && (
+              <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing select-none" />
+            )}
 
-                  if (msg.level === 'warn') {
-                    badgeColor = 'text-amber-400 border-amber-500/20 bg-amber-950/20';
-                    icon = <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />;
-                  } else if (msg.level === 'error') {
-                    badgeColor = 'text-rose-400 border-rose-500/20 bg-rose-950/20';
-                    icon = <X className="w-3 h-3 text-rose-400 shrink-0" />;
-                  } else if (msg.level === 'info') {
-                    badgeColor = 'text-sky-400 border-sky-500/20 bg-sky-950/20';
-                    icon = <Info className="w-3 h-3 text-sky-400 shrink-0" />;
-                  }
+            <iframe
+              ref={iframeRef}
+              title={title || parsedDomain}
+              sandbox="allow-scripts allow-modals"
+              srcDoc={bundledHtml}
+              className={`w-full h-full border-0 bg-white ${
+                isDragging || isResizing ? 'pointer-events-none' : ''
+              }`}
+            />
 
-                  const timeStr = new Date(msg.timestamp).toLocaleTimeString();
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex items-start justify-between gap-2 p-1.5 rounded border transition-colors group ${badgeColor}`}
-                    >
-                      <div className="flex items-start gap-2 min-w-0 flex-1">
-                        <div className="mt-0.5">{icon}</div>
-                        <div className="flex-1 overflow-x-auto whitespace-pre-wrap break-words leading-relaxed text-slate-200">
-                          {msg.args.join(' ')}
+            {/* Error Overlay Toast (Aw, Snap! Style) */}
+            {currentError && (
+              <div className="absolute top-4 inset-x-4 max-w-xl mx-auto z-40 animate-in fade-in slide-in-from-top-4 duration-200">
+                <div className="bg-rose-950/95 backdrop-blur-md border border-rose-500/50 text-rose-100 rounded-xl p-4 shadow-2xl flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-md bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                        <AlertCircle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-rose-300">
+                            {currentError.type === 'syntax' ? 'Syntax Error' : 'Runtime Exception'}
+                          </span>
+                          {currentError.file && (
+                            <span className="px-2 py-0.5 rounded bg-rose-900/80 text-[11px] font-mono text-rose-200 border border-rose-700/60">
+                              {currentError.file}
+                            </span>
+                          )}
+                          {currentError.line !== undefined && (
+                            <span className="px-2 py-0.5 rounded bg-rose-900/80 text-[11px] font-mono text-rose-200 border border-rose-700/60">
+                              Line {currentError.line}
+                              {currentError.column !== undefined ? `:${currentError.column}` : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <span className="text-[10px] text-slate-500">{timeStr}</span>
+                    <button
+                      onClick={() => setCurrentError(null)}
+                      className="p-1 rounded text-rose-400 hover:text-white hover:bg-rose-900/60 transition-colors cursor-pointer"
+                      title="Dismiss error"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <pre className="text-xs font-mono text-rose-100 bg-rose-900/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre-wrap border border-rose-800/40 leading-relaxed max-h-32">
+                    {currentError.message}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── 4. CHROME DEVTOOLS CONSOLE DRAWER (Optional / Toggled) ── */}
+          {(showConsoleDrawer || isConsoleOpen) && (
+            <div
+              className={`border-t border-slate-800 bg-[#0c0d14] flex flex-col transition-all duration-200 z-20 shrink-0 ${
+                isConsoleOpen ? 'h-44' : 'h-8'
+              }`}
+            >
+              {/* DevTools Header Bar */}
+              <div
+                className="h-8 bg-[#12131d] px-3 flex items-center justify-between cursor-pointer select-none text-xs text-slate-300 border-b border-slate-800"
+                onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+              >
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="font-semibold text-white text-[11px]">Console</span>
+
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono ml-1">
+                    {errorCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                        <X className="w-2.5 h-2.5" /> {errorCount}
+                      </span>
+                    )}
+                    {warnCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                        <AlertTriangle className="w-2.5 h-2.5" /> {warnCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConsoleMessages([]);
+                    }}
+                    className="p-1 rounded hover:bg-slate-700/60 text-slate-400 hover:text-white transition-colors"
+                    title="Clear console"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                  <button className="text-slate-400">
+                    {isConsoleOpen ? (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Console Logs Body */}
+              {isConsoleOpen && (
+                <div className="flex-1 p-2 overflow-y-auto font-mono text-[11px] space-y-1 bg-[#090a10]">
+                  {filteredMessages.length === 0 ? (
+                    <div className="text-slate-500 italic p-2 text-center text-xs">
+                      No console output
+                    </div>
+                  ) : (
+                    filteredMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 group ${
+                          msg.level === 'error'
+                            ? 'text-rose-400 bg-rose-950/20'
+                            : msg.level === 'warn'
+                            ? 'text-amber-400 bg-amber-950/20'
+                            : 'text-slate-300'
+                        }`}
+                      >
+                        <span className="text-[10px] text-slate-500 shrink-0">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </span>
+                        <div className="flex-1 whitespace-pre-wrap break-all">
+                          {msg.args.join(' ')}
+                        </div>
                         <button
                           onClick={() => copyLogText(msg)}
-                          className="p-1 rounded text-slate-500 hover:text-slate-300"
-                          title="Copy log entry"
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-slate-700 text-slate-400 transition-opacity"
+                          title="Copy message"
                         >
                           {copiedLogId === msg.id ? (
                             <Check className="w-3 h-3 text-emerald-400" />
@@ -559,14 +961,37 @@ export default function CodePreviewIframe({
                           )}
                         </button>
                       </div>
-                    </div>
-                  );
-                })
+                    ))
+                  )}
+                  <div ref={consoleBottomRef} />
+                </div>
               )}
-              <div ref={consoleBottomRef} />
             </div>
           )}
-        </div>
+
+          {/* ── 5. WINDOW RESIZE HANDLES (For floating mode) ── */}
+          {isFloating && !isMaximized && (
+            <>
+              {/* Right edge */}
+              <div
+                onMouseDown={(e) => handleResizeMouseDown('e', e)}
+                className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-blue-500/20 z-40"
+              />
+              {/* Bottom edge */}
+              <div
+                onMouseDown={(e) => handleResizeMouseDown('s', e)}
+                className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize hover:bg-blue-500/20 z-40"
+              />
+              {/* Bottom-right corner */}
+              <div
+                onMouseDown={(e) => handleResizeMouseDown('se', e)}
+                className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-blue-500/40 z-40 flex items-end justify-end p-0.5"
+              >
+                <div className="w-1.5 h-1.5 border-r-2 border-b-2 border-slate-500 rounded-br-sm" />
+              </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,7 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RecommendedCourses from './RecommendedCourses';
-import { BookOpen, CheckCircle2, Clock, Trophy, ArrowRight, TrendingUp, PlayCircle, Zap } from 'lucide-react';
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Trophy,
+  ArrowRight,
+  TrendingUp,
+  PlayCircle,
+  Zap,
+  Play,
+  Video,
+  Radio,
+  Sparkles,
+} from 'lucide-react';
+import { scrimDatabase } from '../services/scrimDatabase';
 
 const STATS = [
   { label: 'In Progress', value: '3', icon: BookOpen, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
@@ -23,6 +37,13 @@ const ACTIVITY = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [recordedClasses, setRecordedClasses] = useState([]);
+
+  useEffect(() => {
+    scrimDatabase.getAllClasses().then((data) => {
+      setRecordedClasses(data.slice(0, 3));
+    });
+  }, []);
 
   return (
     <div className="space-y-10 max-w-screen-xl mx-auto">
@@ -145,6 +166,70 @@ export default function Dashboard() {
               ))}
             </div>
           </section>
+
+          {/* ── Recorded Interactive Classes (From Database) ── */}
+          {recordedClasses.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <Radio className="w-5 h-5 text-red-500 animate-pulse" />
+                    Recorded Interactive Classes
+                  </h2>
+                  <p className="text-xs text-slate-500">Live Monaco editor telemetry recorded by instructors.</p>
+                </div>
+                <button
+                  onClick={() => navigate('/instructor-dashboard')}
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  View All in Database <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {recordedClasses.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/player?scrimId=${item.id}`)}
+                    className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-indigo-500/80 transition-all duration-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {item.category}
+                        </span>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+                          <Clock className="w-3 h-3" />
+                          <span>{Math.round((item.duration_ms || 0) / 1000)}s</span>
+                        </div>
+                      </div>
+
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-400 transition-colors line-clamp-1 mb-1">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                        {item.description}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400 font-medium">By {item.instructor_name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/player?scrimId=${item.id}`);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                        <span>Play</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <RecommendedCourses />
         </div>
